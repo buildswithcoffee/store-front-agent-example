@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "trail-shell-jacket",
+    "name": "Trail Shell Jacket",
+    "category": "Apparel",
+    "priceCents": 14900,
+    "description": "A three-layer waterproof shell with a helmet-compatible hood and pit zips. Cut for layering: size up if you plan to wear a heavy fleece underneath.",
+    "options": { "Size": ["XS", "S", "M", "L", "XL"], "Color": ["Olive", "Slate"] }
+  },
+  {
+    "slug": "merino-crew-sweater",
+    "name": "Merino Crew Sweater",
+    "category": "Apparel",
+    "priceCents": 9800,
+    "description": "Midweight 100% merino knit that regulates temperature and resists odor. Runs true to size with a relaxed body and slightly long sleeves.",
+    "options": { "Size": ["S", "M", "L", "XL"], "Color": ["Oat", "Charcoal", "Rust"] }
+  },
+  {
+    "slug": "everyday-tee",
+    "name": "Everyday Tee",
+    "category": "Apparel",
+    "priceCents": 3200,
+    "description": "Heavyweight organic cotton with a ribbed collar that keeps its shape. Pre-shrunk, so buy your usual size.",
+    "options": { "Size": ["XS", "S", "M", "L", "XL", "XXL"], "Color": ["White", "Black", "Sage"] }
+  },
+  {
+    "slug": "canvas-work-pant",
+    "name": "Canvas Work Pant",
+    "category": "Apparel",
+    "priceCents": 8900,
+    "description": "Twelve-ounce duck canvas with a gusseted crotch and reinforced knees. Straight leg with a 32-inch inseam; waist sizes are measured in inches.",
+    "options": { "Waist": ["30", "32", "34", "36"], "Color": ["Tan", "Brown"] }
+  },
+  {
+    "slug": "fleece-half-zip",
+    "name": "Fleece Half-Zip",
+    "category": "Apparel",
+    "priceCents": 7400,
+    "description": "Recycled grid fleece with a tall collar and a zippered chest pocket. Fits close through the body; most people take their tee size.",
+    "options": { "Size": ["S", "M", "L", "XL"], "Color": ["Navy", "Heather Grey"] }
+  },
+  {
+    "slug": "daypack-20l",
+    "name": "Daypack 20L",
+    "category": "Bags",
+    "priceCents": 11900,
+    "description": "A 20-liter pack with a padded laptop sleeve, stretch side pockets, and a sternum strap. Fits torsos from 16 to 20 inches.",
+    "options": { "Color": ["Black", "Forest", "Clay"] }
+  },
+  {
+    "slug": "roll-top-tote",
+    "name": "Roll-Top Tote",
+    "category": "Bags",
+    "priceCents": 6400,
+    "description": "Waxed canvas tote that rolls down for groceries and opens up for a weekend. Holds about 25 liters when fully extended.",
+    "options": { "Color": ["Natural", "Olive"] }
+  },
+  {
+    "slug": "travel-duffel-45l",
+    "name": "Travel Duffel 45L",
+    "category": "Bags",
+    "priceCents": 15900,
+    "description": "Carry-on sized duffel with stowable backpack straps and a separate shoe compartment. Meets most airline cabin limits at 22 by 14 by 9 inches.",
+    "options": { "Color": ["Black", "Slate"] }
+  },
+  {
+    "slug": "sling-bag",
+    "name": "Sling Bag",
+    "category": "Bags",
+    "priceCents": 4800,
+    "description": "A four-liter crossbody sling with a key leash and a hidden back pocket. Strap adjusts from 28 to 52 inches.",
+    "options": { "Color": ["Black", "Sand"] }
+  },
+  {
+    "slug": "insulated-bottle-750",
+    "name": "Insulated Bottle 750ml",
+    "category": "Accessories",
+    "priceCents": 3400,
+    "description": "Double-wall stainless steel that keeps drinks cold for 24 hours or hot for 12. Fits standard cup holders and comes with a leakproof cap.",
+    "options": { "Color": ["Steel", "Moss", "Coral"] }
+  },
+  {
+    "slug": "wool-beanie",
+    "name": "Wool Beanie",
+    "category": "Accessories",
+    "priceCents": 2800,
+    "description": "Ribbed merino beanie with a fold-over cuff. One size stretches to fit most heads comfortably.",
+    "options": { "Color": ["Charcoal", "Mustard", "Rust"] }
+  },
+  {
+    "slug": "leather-belt",
+    "name": "Leather Belt",
+    "category": "Accessories",
+    "priceCents": 5600,
+    "description": "Full-grain leather belt with a solid brass buckle, 1.5 inches wide. Order the size two inches above your pant waist.",
+    "options": { "Size": ["32", "34", "36", "38"], "Color": ["Brown", "Black"] }
+  },
+  {
+    "slug": "trail-socks-3-pack",
+    "name": "Trail Socks, 3-Pack",
+    "category": "Accessories",
+    "priceCents": 2400,
+    "description": "Merino-blend crew socks with cushioned soles and a seamless toe. Sized by US shoe size.",
+    "options": { "Size": ["S (4-6)", "M (7-9)", "L (10-12)"] }
+  },
+  {
+    "slug": "polarized-sunglasses",
+    "name": "Polarized Sunglasses",
+    "category": "Accessories",
+    "priceCents": 8900,
+    "description": "Lightweight acetate frames with polarized lenses and spring hinges. Medium fit; comes with a hard case and a microfiber cloth.",
+    "options": { "Color": ["Tortoise", "Matte Black"] }
+  },
+  {
+    "slug": "enamel-mug-set",
+    "name": "Enamel Mug Set",
+    "category": "Home",
+    "priceCents": 3600,
+    "description": "Two 12-ounce steel mugs with a chip-resistant enamel finish. Campfire safe; not for microwaves.",
+    "options": { "Color": ["Cream", "Forest"] }
+  },
+  {
+    "slug": "camp-blanket",
+    "name": "Camp Blanket",
+    "category": "Home",
+    "priceCents": 9200,
+    "description": "Recycled wool blanket, 50 by 70 inches, with a water-resistant nylon backing. Packs into its own carry strap.",
+    "options": { "Color": ["Plaid Red", "Plaid Green"] }
+  },
+  {
+    "slug": "cedar-candle",
+    "name": "Cedar Candle",
+    "category": "Home",
+    "priceCents": 2800,
+    "description": "Soy wax candle with cedar and smoke notes in a reusable glass jar. Burns for about 45 hours.",
+    "options": {}
+  },
+  {
+    "slug": "field-notebook-3-pack",
+    "name": "Field Notebook, 3-Pack",
+    "category": "Home",
+    "priceCents": 1800,
+    "description": "Three pocket notebooks with dot-grid pages and a water-resistant cover. 48 pages each, 3.5 by 5.5 inches.",
+    "options": {}
+  },
+  {
+    "slug": "cast-iron-skillet",
+    "name": "Cast Iron Skillet, 10 inch",
+    "category": "Home",
+    "priceCents": 4900,
+    "description": "Pre-seasoned cast iron with a helper handle and two pour spouts. Works on induction, gas, oven, and open flame.",
+    "options": {}
+  },
+  {
+    "slug": "linen-apron",
+    "name": "Linen Apron",
+    "category": "Home",
+    "priceCents": 4400,
+    "description": "Stonewashed linen apron with cross-back straps and two front pockets. One size; straps adjust for most heights.",
+    "options": { "Color": ["Natural", "Indigo"] }
+  }
+]
