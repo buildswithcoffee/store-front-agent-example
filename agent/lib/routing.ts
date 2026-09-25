@@ -8,9 +8,10 @@ export const SHOPPER_INTENTS = {
   Personal_shopping: "Wants help choosing what to buy.",
   Product_details: "Asking about a product's specs, materials, or availability.",
   Sizing: "Asking about size or fit.",
-  Promotions: "Asking about discounts, deals, or shipping costs.",
+  Promotions: "Asking about discounts or deals.",
   Refunds_and_exchanges: "Wants to return or exchange an item, or get money back.",
   Technical_support: "Something on the site is broken or not working.",
+  Shipping: "Questions about how to get the product, change addresses, special instructions on receiving."
 } as const;
 
 export type ShopperIntent = keyof typeof SHOPPER_INTENTS;
@@ -33,6 +34,7 @@ export const ROUTES: Record<ShopperIntent, Route> = {
   Promotions:            { model: FAST,   fallbacks: ["google/gemini-3.5-flash", STRONG], reasoning: "low",    skill: "promotions" },
   Refunds_and_exchanges: { model: STRONG, fallbacks: ["openai/gpt-5.2", FAST],            reasoning: "medium", skill: "returns-and-exchanges" },
   Technical_support:     { model: STRONG, fallbacks: ["openai/gpt-5.2", FAST],            reasoning: "medium", skill: "technical-support" },
+  Shipping:              { model: STRONG, fallbacks: ["openai/gpt-5.2", FAST],            reasoning: "medium", skill: "shipping" },
 };
 
 export const DEFAULT_ROUTE = ROUTES.Personal_shopping;

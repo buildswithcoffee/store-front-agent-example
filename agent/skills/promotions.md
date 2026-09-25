@@ -4,7 +4,7 @@ description: Use when the shopper asks about discounts, sales, promo codes, or d
 
 Current promotions at Northstar Goods.
 
-- Free shipping on orders over $75. Under that, shipping is a flat $6.
+- Free shipping on orders over $75. Under that, shipping is a flat $6. For delivery times and address changes, the shipping skill applies.
 - Bundle: buy any two items from the Home category and save 10% at checkout. Applied automatically.
 - There are no active promo codes. If the shopper has a code, say codes are not supported in this demo store rather than guessing whether it works.
 
