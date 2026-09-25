@@ -175,7 +175,15 @@ async function classify(message: string): Promise<TurnInfo> {
 function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
   const isUser = message.role === "user";
   // Several tools in one reply can return the same product; show each card once.
+  // Computed up front so rendering stays free of side effects.
   const shown = new Set<string>();
+  const cardsByCall = new Map<string, ProductCardData[]>();
+  for (const part of message.parts) {
+    if (part.type !== "dynamic-tool") continue;
+    const fresh = productsFrom(part).filter((p) => !shown.has(p.slug));
+    fresh.forEach((p) => shown.add(p.slug));
+    cardsByCall.set(part.toolCallId, fresh);
+  }
   return (
     <div className={isUser ? "flex flex-col items-end gap-1" : "space-y-2"}>
       {message.parts.map((part, index) => {
@@ -193,7 +201,8 @@ function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
             </p>
           ) : null;
         }
-        if (part.type === "dynamic-tool") return <ToolPart key={part.toolCallId} part={part} shown={shown} />;
+        if (part.type === "dynamic-tool")
+          return <ToolPart key={part.toolCallId} part={part} products={cardsByCall.get(part.toolCallId) ?? []} />;
         return null;
       })}
       {info && <RouteBadge info={info} />}
@@ -217,9 +226,7 @@ function RouteBadge({ info }: { info: TurnInfo }) {
   );
 }
 
-function ToolPart({ part, shown }: { part: EveDynamicToolPart; shown: Set<string> }) {
-  const products = productsFrom(part).filter((p) => !shown.has(p.slug));
-  products.forEach((p) => shown.add(p.slug));
+function ToolPart({ part, products }: { part: EveDynamicToolPart; products: ProductCardData[] }) {
   if (products.length > 0) {
     return (
       <div className="grid grid-cols-2 gap-2">
