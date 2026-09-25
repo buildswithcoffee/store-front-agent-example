@@ -1,0 +1,262 @@
+"use client";
+
+import type { EveDynamicToolPart, EveMessage } from "eve/react";
+import { useEveAgent } from "eve/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+import { formatPrice } from "@/lib/format";
+
+interface ProductCardData {
+  slug: string;
+  name: string;
+  priceCents: number;
+  image: string;
+}
+
+// What the panel learned about each turn: jev's intent before the send, and the
+// model Eve selected once the turn started.
+interface TurnInfo {
+  intent?: string;
+  confidence?: number;
+  modelId?: string;
+}
+
+export function Chat() {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [turns, setTurns] = useState<TurnInfo[]>([]);
+  const router = useRouter();
+  const cartReady = useRef<Promise<unknown> | null>(null);
+  const pendingIntent = useRef<TurnInfo | null>(null);
+  const seenTurnIds = useRef(new Set<string>());
+
+  const agent = useEveAgent({
+    async prepareSend(turn) {
+      // Make sure the browser has a cart cookie before the first message, so the
+      // agent's channel can bind the session to that cart.
+      cartReady.current ??= fetch("/api/agent/session", { method: "POST" });
+      await cartReady.current;
+      const detected = pendingIntent.current;
+      pendingIntent.current = null;
+      return {
+        ...turn,
+        // Becomes turn context the agent's model and instructions resolvers read.
+        clientContext: detected?.intent
+          ? {
+              detectedIntent: {
+                intent: detected.intent,
+                ...(detected.confidence === undefined ? {} : { confidence: detected.confidence }),
+              },
+            }
+          : undefined,
+      };
+    },
+    onEvent(event) {
+      // The first model step of each turn reports which model the router picked.
+      if (event.type === "step.started" && !seenTurnIds.current.has(event.data.turnId)) {
+        seenTurnIds.current.add(event.data.turnId);
+        const modelId = event.data.modelId;
+        setTurns((all) => all.map((t, i) => (i === all.length - 1 ? { ...t, modelId } : t)));
+      }
+    },
+    // The agent may have changed the cart; refresh server components so the
+    // header count and cart page reflect it.
+    onFinish: () => router.refresh(),
+  });
+
+  const busy = agent.status === "submitted" || agent.status === "streaming";
+  const bottom = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: "end" });
+  }, [agent.data.messages]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text || busy) return;
+    setDraft("");
+    // Classify first (bounded), so the badge and the routing use the same answer.
+    const detected = await classify(text);
+    pendingIntent.current = detected;
+    setTurns((all) => [...all, detected]);
+    void agent.send(text);
+  }
+
+  function reset() {
+    agent.reset();
+    setTurns([]);
+    seenTurnIds.current.clear();
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed right-4 bottom-4 rounded-full bg-neutral-900 px-5 py-3 text-sm font-medium text-white shadow-lg hover:bg-neutral-800"
+      >
+        Ask the store
+      </button>
+    );
+  }
+
+  let userIndex = -1;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 flex h-[75vh] flex-col rounded-t-2xl bg-white shadow-2xl ring-1 ring-neutral-200 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:h-[600px] sm:w-[400px] sm:rounded-2xl">
+      <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold">Northstar assistant</p>
+          <p className="text-xs text-neutral-500">Products, sizing, orders, and your cart</p>
+        </div>
+        <div className="flex gap-3 text-xs text-neutral-500">
+          <button type="button" onClick={reset} className="hover:text-neutral-900">
+            New chat
+          </button>
+          <button type="button" onClick={() => setOpen(false)} className="hover:text-neutral-900">
+            Close
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {agent.data.messages.length === 0 && (
+          <p className="text-sm text-neutral-500">
+            Try “a jacket under $150”, “does the fleece run small?”, or “add the wool beanie to my cart”.
+          </p>
+        )}
+        {agent.data.messages.map((message) => {
+          const info = message.role === "user" ? turns[++userIndex] : undefined;
+          return <Message key={message.id} message={message} info={info} />;
+        })}
+        {agent.error && <p className="text-xs text-red-600">{agent.error.message}</p>}
+        <div ref={bottom} />
+      </div>
+
+      <form onSubmit={submit} className="flex gap-2 border-t border-neutral-200 p-3">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={busy ? "Thinking…" : "Ask about products, sizing, or your order"}
+          disabled={busy}
+          className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={busy || !draft.trim()}
+          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// Ask the server to classify the message with jev. Bounded so a slow classifier
+// never delays the shopper; without an answer the agent classifies for itself.
+async function classify(message: string): Promise<TurnInfo> {
+  try {
+    const response = await fetch("/api/agent/intent", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!response.ok) return {};
+    const data = (await response.json()) as { intent?: string; confidence?: number };
+    return { intent: data.intent, confidence: data.confidence };
+  } catch {
+    return {};
+  }
+}
+
+function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
+  const isUser = message.role === "user";
+  // Several tools in one reply can return the same product; show each card once.
+  const shown = new Set<string>();
+  return (
+    <div className={isUser ? "flex flex-col items-end gap-1" : "space-y-2"}>
+      {message.parts.map((part, index) => {
+        if (part.type === "text") {
+          return part.text ? (
+            <p
+              key={index}
+              className={
+                isUser
+                  ? "max-w-[85%] rounded-2xl bg-neutral-900 px-3 py-2 text-sm text-white"
+                  : "text-sm leading-relaxed text-neutral-800"
+              }
+            >
+              {part.text}
+            </p>
+          ) : null;
+        }
+        if (part.type === "dynamic-tool") return <ToolPart key={part.toolCallId} part={part} shown={shown} />;
+        return null;
+      })}
+      {info && <RouteBadge info={info} />}
+    </div>
+  );
+}
+
+// The demo moment: what jev decided and which model Eve routed the turn to.
+function RouteBadge({ info }: { info: TurnInfo }) {
+  if (!info.intent && !info.modelId) return null;
+  return (
+    <p className="flex flex-wrap justify-end gap-1 text-[11px] text-neutral-500">
+      {info.intent && (
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5">
+          {info.intent.replaceAll("_", " ")}
+          {info.confidence !== undefined && ` · ${Math.round(info.confidence * 100)}%`}
+        </span>
+      )}
+      {info.modelId && <span className="rounded-full bg-neutral-100 px-2 py-0.5">{info.modelId}</span>}
+    </p>
+  );
+}
+
+function ToolPart({ part, shown }: { part: EveDynamicToolPart; shown: Set<string> }) {
+  const products = productsFrom(part).filter((p) => !shown.has(p.slug));
+  products.forEach((p) => shown.add(p.slug));
+  if (products.length > 0) {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {products.map((p) => (
+          <Link key={p.slug} href={`/products/${p.slug}`} className="rounded-lg ring-1 ring-neutral-200 hover:bg-neutral-50">
+            <img src={p.image} alt="" className="aspect-square w-full rounded-t-lg" />
+            <div className="p-2">
+              <p className="truncate text-xs font-medium">{p.name}</p>
+              <p className="text-xs text-neutral-500">{formatPrice(p.priceCents)}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    );
+  }
+  // A product tool whose results were all shown already needs no status line.
+  if (productsFrom(part).length > 0) return null;
+  const isSkill = part.toolName === "load_skill" || part.toolMetadata?.eve?.kind === "load-skill";
+  const label = isSkill ? `Loaded skill: ${skillName(part.input)}` : part.toolName.replaceAll("_", " ");
+  return (
+    <p className="text-xs text-neutral-400">
+      {label}
+      {part.state === "output-error" && " failed"}
+    </p>
+  );
+}
+
+function productsFrom(part: EveDynamicToolPart): ProductCardData[] {
+  if (part.state !== "output-available" || !part.output || typeof part.output !== "object") return [];
+  const output = part.output as { products?: ProductCardData[]; product?: ProductCardData };
+  return output.products ?? (output.product ? [output.product] : []);
+}
+
+function skillName(input: unknown): string {
+  if (input && typeof input === "object") {
+    const value = Object.values(input as Record<string, unknown>)[0];
+    if (typeof value === "string") return value;
+  }
+  return "";
+}

@@ -1,35 +1,42 @@
-'use client';
+import Link from "next/link";
 
-import { useState } from 'react';
+import { ProductCard } from "@/components/product-card";
+import { getCategories, getProducts } from "@/lib/store";
 
-export default function Page() {
-  const [text, setText] = useState('');
-  const [result, setResult] = useState<unknown>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function run() {
-    setLoading(true);
-    const res = await fetch('/api/evaluate', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-    setResult(await res.json());
-    setLoading(false);
-  }
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category } = await searchParams;
+  const [products, categories] = await Promise.all([getProducts(category), getCategories()]);
 
   return (
-    <main>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={8}
-        style={{ width: '100%' }}
-        placeholder="Paste a transcript…"
-      />
-      <button onClick={run} disabled={loading || !text}>
-        {loading ? 'Evaluating…' : 'Evaluate'}
-      </button>
-      {result != null && <pre>{JSON.stringify(result, null, 2)}</pre>}
-    </main>
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterChip href="/" active={!category} label="All" />
+        {categories.map((c) => (
+          <FilterChip key={c} href={`/?category=${encodeURIComponent(c)}`} active={c === category} label={c} />
+        ))}
+      </div>
+      <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
+        {products.map((p) => (
+          <ProductCard key={p.id} product={p} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function FilterChip({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-full px-3 py-1 text-sm ring-1 ${
+        active ? "bg-neutral-900 text-white ring-neutral-900" : "bg-white text-neutral-700 ring-neutral-200 hover:bg-neutral-100"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }

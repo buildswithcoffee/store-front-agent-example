@@ -5,3 +5,7 @@ node_modules
 next-env.d.ts
 .vercel
 .env*
+
+# eve
+.eve/
+.output/
