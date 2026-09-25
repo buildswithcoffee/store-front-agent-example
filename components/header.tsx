@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { getCartCount, getCartId } from "@/lib/store";
+import { getCartId } from "@/lib/cart-cookie";
+import { getCartCount } from "@/lib/store";
 
 export async function Header() {
   const count = await getCartCount(await getCartId());

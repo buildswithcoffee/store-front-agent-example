@@ -3,15 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import {
-  addCartItem,
-  clearCart,
-  createOrder,
-  getCart,
-  getCartId,
-  getOrCreateCartId,
-  setCartItemQuantity,
-} from "@/lib/store";
+import { getCartId, getOrCreateCartId } from "@/lib/cart-cookie";
+import { addCartItem, clearCart, createOrder, getCart, setCartItemQuantity } from "@/lib/store";
 
 export async function addToCart(formData: FormData) {
   const productId = Number(formData.get("productId"));

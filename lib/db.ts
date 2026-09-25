@@ -1,8 +1,8 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
-import orders from "@/data/orders.json";
-import products from "@/data/products.json";
-import { schema } from "@/db/schema";
+import orders from "../data/orders.json";
+import products from "../data/products.json";
+import { schema } from "../db/schema";
 
 export const hasDatabase = Boolean(process.env.DATABASE_URL);
 

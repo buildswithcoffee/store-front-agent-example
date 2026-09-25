@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
+import { Chat } from "@/components/agent/chat";
 import { Header } from "@/components/header";
 import { hasDatabase } from "@/lib/db";
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* proxy.ts rewrites every route to /setup while DATABASE_URL is missing. */}
         {hasDatabase && <Header />}
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        {hasDatabase && <Chat />}
       </body>
     </html>
   );

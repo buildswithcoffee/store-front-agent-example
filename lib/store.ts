@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
-
+// Plain data access shared by the pages, the server actions, and the agent's tools.
+// Nothing here touches Next.js request APIs; see lib/cart-cookie.ts for the cookie.
 import { db } from "./db";
 
 export interface Product {
@@ -34,8 +34,6 @@ export interface Order {
   placedAt: string;
   items: OrderItem[];
 }
-
-const CART_COOKIE = "cart_id";
 
 function toProduct(row: Record<string, unknown>): Product {
   return {
@@ -77,6 +75,23 @@ export async function getProducts(category?: string): Promise<Product[]> {
   return rows.map(toProduct);
 }
 
+export async function searchProducts(filters: {
+  query?: string;
+  category?: string;
+  maxPriceCents?: number;
+}): Promise<Product[]> {
+  const sql = await db();
+  const pattern = filters.query ? `%${filters.query}%` : null;
+  const rows = await sql`
+    select * from products
+    where (${pattern}::text is null or name ilike ${pattern} or description ilike ${pattern} or category ilike ${pattern})
+      and (${filters.category ?? null}::text is null or category ilike ${filters.category ?? null})
+      and (${filters.maxPriceCents ?? null}::int is null or price_cents <= ${filters.maxPriceCents ?? null})
+    order by id
+    limit 12`;
+  return rows.map(toProduct);
+}
+
 export async function getProduct(slug: string): Promise<Product | undefined> {
   const sql = await db();
   const [row] = await sql`select * from products where slug = ${slug}`;
@@ -89,19 +104,12 @@ export async function getCategories(): Promise<string[]> {
   return rows.map((r) => r.category as string);
 }
 
-// Cart. The cart id lives in a cookie; nothing else identifies the shopper.
+// Cart. The cart id lives in a browser cookie; nothing else identifies the shopper.
 
-export async function getCartId(): Promise<string | undefined> {
-  return (await cookies()).get(CART_COOKIE)?.value;
-}
-
-export async function getOrCreateCartId(): Promise<string> {
-  const existing = await getCartId();
-  if (existing) return existing;
+export async function createCart(): Promise<string> {
   const sql = await db();
   const [{ id }] = await sql`insert into carts default values returning id`;
-  (await cookies()).set(CART_COOKIE, id, { httpOnly: true, sameSite: "lax", path: "/" });
-  return id;
+  return id as string;
 }
 
 export async function getCart(cartId?: string): Promise<CartLine[]> {
@@ -129,6 +137,7 @@ export async function getCartCount(cartId?: string): Promise<number> {
 
 export async function addCartItem(cartId: string, productId: number, variant: string, quantity = 1) {
   const sql = await db();
+  await sql`insert into carts (id) values (${cartId}) on conflict do nothing`;
   await sql`
     insert into cart_items (cart_id, product_id, variant, quantity)
     values (${cartId}, ${productId}, ${variant}, ${quantity})

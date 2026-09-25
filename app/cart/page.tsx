@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { placeOrder, updateQuantity } from "@/app/actions";
 import { formatPrice } from "@/lib/format";
-import { cartTotal, getCart, getCartId } from "@/lib/store";
+import { getCartId } from "@/lib/cart-cookie";
+import { cartTotal, getCart } from "@/lib/store";
 
 export default async function CartPage() {
   const lines = await getCart(await getCartId());
