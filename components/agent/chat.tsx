@@ -78,7 +78,8 @@ export function Chat() {
     if (!text || busy) return;
     setDraft("");
     // Classify first (bounded), so the badge and the routing use the same answer.
-    const detected = await classify(text);
+    // Recent messages let a short follow-up keep the topic of the conversation.
+    const detected = await classify(text, recentFrom(agent.data.messages));
     pendingIntent.current = detected;
     setTurns((all) => [...all, detected]);
     void agent.send(text);
@@ -154,14 +155,28 @@ export function Chat() {
   );
 }
 
+type RecentMessage = { role: "user" | "assistant"; text: string };
+
+// The last few exchanges as plain text, for the classifier.
+function recentFrom(messages: readonly EveMessage[], limit = 4): RecentMessage[] {
+  return messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as RecentMessage["role"],
+      text: m.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").trim(),
+    }))
+    .filter((m) => m.text)
+    .slice(-limit);
+}
+
 // Ask the server to classify the message with jev. Bounded so a slow classifier
 // never delays the shopper; without an answer the agent classifies for itself.
-async function classify(message: string): Promise<TurnInfo> {
+async function classify(message: string, recent: RecentMessage[]): Promise<TurnInfo> {
   try {
     const response = await fetch("/api/agent/intent", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, recent }),
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return {};
