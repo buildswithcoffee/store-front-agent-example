@@ -2,9 +2,9 @@
 
 A small storefront with an AI shopping assistant, built as a starter for trying out Vercel. It is deliberately simple: a Next.js app, a Neon Postgres database that seeds itself, and an [Eve](https://eve.dev) agent that classifies every message with [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) and routes it to the right model, skill, and tools.
 
-No Shopify, no payments, no accounts. About 2,000 lines of TypeScript you can read in an afternoon.
+No Shopify, no payments, no accounts. About 1,300 lines of TypeScript you can read in an afternoon.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbuildswithcoffee%2Fstore-front-agent&project-name=store-front&repository-name=store-front&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FVercel-Marketing-Demos%2Fstore-front-agent&project-name=store-front&repository-name=store-front&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 The button copies this repo into your GitHub account, creates a free Neon database, connects it to the new project, and deploys. On the first request the app creates its tables and loads the sample catalog. The assistant authenticates to AI Gateway with the deployment's own identity, so there are no API keys to set.
 
@@ -95,7 +95,7 @@ The agent's tools call the same functions in `lib/store.ts` that the pages use. 
 You need Node 24 and the [Vercel CLI](https://vercel.com/docs/cli).
 
 ```bash
-git clone https://github.com/buildswithcoffee/store-front-agent
+git clone https://github.com/Vercel-Marketing-Demos/store-front-agent
 cd store-front-agent
 npm install
 ```
