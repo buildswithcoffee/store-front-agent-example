@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { classifyIntent } from "@/agent/lib/routing";
+import { CLASSIFIER_MODEL, classifyIntent } from "@/agent/lib/routing";
 
 const body = z.object({
   message: z.string().trim().min(1).max(4000),
@@ -20,7 +20,10 @@ export async function POST(request: Request) {
   if (!parsed.success) return new Response(null, { status: 400 });
   try {
     const result = await classifyIntent(parsed.data.message, parsed.data.recent, request.signal);
-    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(
+      { ...result, classifier: CLASSIFIER_MODEL },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch {
     return Response.json({ error: "Could not classify the message." }, { status: 503 });
   }

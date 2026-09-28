@@ -15,9 +15,10 @@ interface ProductCardData {
   image: string;
 }
 
-// What the panel learned about each turn: jev's intent before the send, and the
-// model Eve selected once the turn started.
+// What the panel learned about each turn: the classifier and the intent it chose
+// before the send, and the model Eve selected once the turn started.
 interface TurnInfo {
+  classifier?: string;
   intent?: string;
   confidence?: number;
   modelId?: string;
@@ -103,7 +104,8 @@ export function Chat() {
     );
   }
 
-  let userIndex = -1;
+  // An assistant message shares the turn info of the user message that triggered it.
+  let turnIndex = -1;
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 flex h-[75vh] flex-col rounded-t-2xl bg-white shadow-2xl ring-1 ring-neutral-200 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:h-[600px] sm:w-[400px] sm:rounded-2xl">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
@@ -128,8 +130,8 @@ export function Chat() {
           </p>
         )}
         {agent.data.messages.map((message) => {
-          const info = message.role === "user" ? turns[++userIndex] : undefined;
-          return <Message key={message.id} message={message} info={info} />;
+          if (message.role === "user") turnIndex++;
+          return <Message key={message.id} message={message} info={turns[turnIndex]} />;
         })}
         {agent.error && <p className="text-xs text-red-600">{agent.error.message}</p>}
         <div ref={bottom} />
@@ -180,65 +182,123 @@ async function classify(message: string, recent: RecentMessage[]): Promise<TurnI
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return {};
-    const data = (await response.json()) as { intent?: string; confidence?: number };
-    return { intent: data.intent, confidence: data.confidence };
+    const data = (await response.json()) as {
+      classifier?: string;
+      intent?: string;
+      confidence?: number;
+    };
+    return { classifier: data.classifier, intent: data.intent, confidence: data.confidence };
   } catch {
     return {};
   }
 }
 
 function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
-  const isUser = message.role === "user";
+  if (message.role !== "user") return <AssistantMessage message={message} info={info} />;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {message.parts.map((part, index) =>
+        part.type === "text" && part.text ? (
+          <p key={index} className="max-w-[85%] rounded-2xl bg-neutral-900 px-3 py-2 text-sm text-white">
+            {part.text}
+          </p>
+        ) : null,
+      )}
+      {info && <IntentChips info={info} />}
+    </div>
+  );
+}
+
+function AssistantMessage({ message, info }: { message: EveMessage; info?: TurnInfo }) {
   // Several tools in one reply can return the same product; show each card once.
   // Computed up front so rendering stays free of side effects.
   const shown = new Set<string>();
   const cardsByCall = new Map<string, ProductCardData[]>();
+  let skill = "";
   for (const part of message.parts) {
     if (part.type !== "dynamic-tool") continue;
+    if (isSkillPart(part) && part.state !== "output-error") skill ||= skillName(part.input);
     const fresh = productsFrom(part).filter((p) => !shown.has(p.slug));
     fresh.forEach((p) => shown.add(p.slug));
     cardsByCall.set(part.toolCallId, fresh);
   }
   return (
-    <div className={isUser ? "flex flex-col items-end gap-1" : "space-y-2"}>
+    <div className="space-y-2">
+      <RouteRow skill={skill} modelId={info?.modelId} />
+      {info?.intent && <Narration intent={info.intent} skill={skill} />}
       {message.parts.map((part, index) => {
-        if (part.type === "text") {
+        if (part.type === "text")
           return part.text ? (
-            <p
-              key={index}
-              className={
-                isUser
-                  ? "max-w-[85%] rounded-2xl bg-neutral-900 px-3 py-2 text-sm text-white"
-                  : "text-sm leading-relaxed text-neutral-800"
-              }
-            >
+            <p key={index} className="text-sm leading-relaxed text-neutral-800">
               {part.text}
             </p>
           ) : null;
-        }
-        if (part.type === "dynamic-tool")
+        // Skill loads are reported once in RouteRow above.
+        if (part.type === "dynamic-tool" && !isSkillPart(part))
           return <ToolPart key={part.toolCallId} part={part} products={cardsByCall.get(part.toolCallId) ?? []} />;
         return null;
       })}
-      {info && <RouteBadge info={info} />}
     </div>
   );
 }
 
-// The demo moment: what jev decided and which model Eve routed the turn to.
-function RouteBadge({ info }: { info: TurnInfo }) {
-  if (!info.intent && !info.modelId) return null;
+// Half the demo: which model classified the message, and what it decided.
+function IntentChips({ info }: { info: TurnInfo }) {
+  if (!info.intent) return null;
   return (
     <p className="flex flex-wrap justify-end gap-1 text-[11px] text-neutral-500">
-      {info.intent && (
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5">
-          {info.intent.replaceAll("_", " ")}
-          {info.confidence !== undefined && ` · ${Math.round(info.confidence * 100)}%`}
-        </span>
-      )}
-      {info.modelId && <span className="rounded-full bg-neutral-100 px-2 py-0.5">{info.modelId}</span>}
+      {info.classifier && <span className="rounded-full bg-neutral-100 px-2 py-0.5">{info.classifier}</span>}
+      <span className="rounded-full bg-neutral-100 px-2 py-0.5">
+        {info.intent.replaceAll("_", " ")}
+        {info.confidence !== undefined && ` · ${Math.round(info.confidence * 100)}%`}
+      </span>
     </p>
   );
+}
+
+// The other half: what that decision selected — a skill to load and a model to answer.
+function RouteRow({ skill, modelId }: { skill: string; modelId?: string }) {
+  if (!skill && !modelId) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-400">
+      {skill && <span>Loading skill: {skill}</span>}
+      {modelId && (
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
+          model to be used: {modelId}
+        </span>
+      )}
+    </p>
+  );
+}
+
+// Names the skill when one loaded, so this line cannot contradict the row above it
+// on the turns where the model picks a skill the intent did not route to.
+function Narration({ intent, skill }: { intent: string; skill: string }) {
+  const topic = skill ? skill.replaceAll("-", " ") : intent.replaceAll("_", " ").toLowerCase();
+  const text = `It looks like you're looking for ${topic.endsWith("support") ? topic : `${topic} support`}.${
+    skill ? " Let me gather the right skills to help…" : ""
+  }`;
+  return (
+    <p className="text-sm text-neutral-500 italic">
+      <Typewriter text={text} />
+    </p>
+  );
+}
+
+// Keyed on the text so streaming re-renders do not restart the animation.
+function Typewriter({ text }: { text: string }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    setShown(0);
+    let n = 0;
+    const id = setInterval(() => {
+      n += 1;
+      setShown(n);
+      if (n >= text.length) clearInterval(id);
+    }, 18);
+    return () => clearInterval(id);
+  }, [text]);
+  return <>{text.slice(0, shown)}</>;
 }
 
 function ToolPart({ part, products }: { part: EveDynamicToolPart; products: ProductCardData[] }) {
@@ -259,14 +319,16 @@ function ToolPart({ part, products }: { part: EveDynamicToolPart; products: Prod
   }
   // A product tool whose results were all shown already needs no status line.
   if (productsFrom(part).length > 0) return null;
-  const isSkill = part.toolName === "load_skill" || part.toolMetadata?.eve?.kind === "load-skill";
-  const label = isSkill ? `Loaded skill: ${skillName(part.input)}` : part.toolName.replaceAll("_", " ");
   return (
     <p className="text-xs text-neutral-400">
-      {label}
+      {part.toolName.replaceAll("_", " ")}
       {part.state === "output-error" && " failed"}
     </p>
   );
+}
+
+function isSkillPart(part: EveDynamicToolPart): boolean {
+  return part.toolName === "load_skill" || part.toolMetadata?.eve?.kind === "load-skill";
 }
 
 function productsFrom(part: EveDynamicToolPart): ProductCardData[] {

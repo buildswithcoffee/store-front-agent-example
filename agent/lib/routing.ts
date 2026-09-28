@@ -46,6 +46,9 @@ export function isShopperIntent(value: unknown): value is ShopperIntent {
 /** A few prior turns, so a short follow-up like "and to Alaska?" keeps its topic. */
 export type RecentMessage = { role: "user" | "assistant"; text: string };
 
+/** The model that classifies, as opposed to the models in ROUTES that answer. */
+export const CLASSIFIER_MODEL = "typesafe-ai/jev";
+
 // jev is an evaluation model: it answers a typed question with per-choice probabilities
 // instead of generating text, which makes it fast and cheap enough to run before every turn.
 export async function classifyIntent(
@@ -55,7 +58,7 @@ export async function classifyIntent(
 ) {
   const { answers } = await evaluate({
     abortSignal,
-    model: "typesafe-ai/jev",
+    model: CLASSIFIER_MODEL,
     state: { recent, message },
     questions: {
       intent: {
