@@ -43,17 +43,25 @@ export function isShopperIntent(value: unknown): value is ShopperIntent {
   return typeof value === "string" && value in SHOPPER_INTENTS;
 }
 
+/** A few prior turns, so a short follow-up like "and to Alaska?" keeps its topic. */
+export type RecentMessage = { role: "user" | "assistant"; text: string };
+
 // jev is an evaluation model: it answers a typed question with per-choice probabilities
 // instead of generating text, which makes it fast and cheap enough to run before every turn.
-export async function classifyIntent(message: string, abortSignal?: AbortSignal) {
+export async function classifyIntent(
+  message: string,
+  recent: RecentMessage[] = [],
+  abortSignal?: AbortSignal,
+) {
   const { answers } = await evaluate({
     abortSignal,
     model: "typesafe-ai/jev",
-    state: { message },
+    state: { recent, message },
     questions: {
       intent: {
         type: "choice",
-        instructions: "What is the shopper asking for in this message?",
+        instructions:
+          "What is the shopper asking for in `message`? Use `recent` only to resolve what a short follow-up refers to.",
         criteria: SHOPPER_INTENTS,
       },
     },
@@ -77,15 +85,17 @@ export function intentFromMessages(messages: readonly ModelMessage[]): ShopperIn
   return undefined;
 }
 
-export function latestUserText(messages: readonly ModelMessage[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.role !== "user") continue;
+// The conversation as plain role/text pairs, newest last, skipping tool traffic and
+// the JSON context messages. Used by the resolver's fallback classification.
+export function recentFromHistory(messages: readonly ModelMessage[], limit = 5): RecentMessage[] {
+  const recent: RecentMessage[] = [];
+  for (const message of messages) {
+    if (message.role !== "user" && message.role !== "assistant") continue;
     const text =
       typeof message.content === "string"
         ? message.content
-        : message.content.map((p) => ("text" in p ? p.text : "")).join(" ");
-    if (text && !text.includes('"detectedIntent"')) return text;
+        : message.content.map((p) => (p.type === "text" ? p.text : "")).join(" ");
+    if (text.trim() && !text.includes('"detectedIntent"')) recent.push({ role: message.role, text });
   }
-  return undefined;
+  return recent.slice(-limit);
 }

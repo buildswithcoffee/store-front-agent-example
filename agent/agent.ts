@@ -1,6 +1,6 @@
 import { defineAgent, defineDynamic } from "eve";
 
-import { classifyIntent, DEFAULT_ROUTE, intentFromMessages, latestUserText, ROUTES } from "./lib/routing";
+import { classifyIntent, DEFAULT_ROUTE, intentFromMessages, recentFromHistory, ROUTES } from "./lib/routing";
 
 export default defineAgent({
   // Picked per turn from the shopper's classified intent. See agent/lib/routing.ts.
@@ -11,8 +11,10 @@ export default defineAgent({
         if (!intent) {
           // The panel normally classifies before sending. If that context is missing
           // (a direct API call, or the classifier timed out), classify here.
-          const text = latestUserText(ctx.messages);
-          if (text) intent = (await classifyIntent(text).catch(() => undefined))?.intent;
+          const recent = recentFromHistory(ctx.messages);
+          const latest = recent.at(-1);
+          if (latest?.role === "user")
+            intent = (await classifyIntent(latest.text, recent.slice(0, -1)).catch(() => undefined))?.intent;
         }
         const route = intent ? ROUTES[intent] : DEFAULT_ROUTE;
         return {
