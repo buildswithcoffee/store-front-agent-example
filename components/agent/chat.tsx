@@ -224,8 +224,8 @@ function AssistantMessage({ message, info }: { message: EveMessage; info?: TurnI
   }
   return (
     <div className="space-y-2">
-      <RouteRow skill={skill} modelId={info?.modelId} />
       {info?.intent && <Narration intent={info.intent} skill={skill} />}
+      <RouteRow skill={skill} modelId={info?.modelId} />
       {message.parts.map((part, index) => {
         if (part.type === "text")
           return part.text ? (
@@ -247,11 +247,11 @@ function IntentChips({ info }: { info: TurnInfo }) {
   if (!info.intent) return null;
   return (
     <p className="flex flex-wrap justify-end gap-1 text-[11px] text-neutral-500">
-      {info.classifier && <span className="rounded-full bg-neutral-100 px-2 py-0.5">{info.classifier}</span>}
       <span className="rounded-full bg-neutral-100 px-2 py-0.5">
         {info.intent.replaceAll("_", " ")}
         {info.confidence !== undefined && ` · ${Math.round(info.confidence * 100)}%`}
       </span>
+      {info.classifier && <span className="rounded-full bg-neutral-100 px-2 py-0.5">{info.classifier}</span>}
     </p>
   );
 }
@@ -264,7 +264,7 @@ function RouteRow({ skill, modelId }: { skill: string; modelId?: string }) {
       {skill && <span>Loading skill: {skill}</span>}
       {modelId && (
         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
-          model to be used: {modelId}
+          Model to be used: {modelId}
         </span>
       )}
     </p>
