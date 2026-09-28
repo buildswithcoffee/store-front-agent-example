@@ -319,10 +319,11 @@ function ToolPart({ part, products }: { part: EveDynamicToolPart; products: Prod
   }
   // A product tool whose results were all shown already needs no status line.
   if (productsFrom(part).length > 0) return null;
+  const name = part.toolName.replaceAll("_", " ");
   return (
     <p className="text-xs text-neutral-400">
-      {part.toolName.replaceAll("_", " ")}
-      {part.state === "output-error" && " failed"}
+      Using skill: {name.charAt(0).toUpperCase() + name.slice(1)}
+      {part.state === "output-error" && " (failed)"}
     </p>
   );
 }
