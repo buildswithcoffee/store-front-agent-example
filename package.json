@@ -5,7 +5,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:reset": "node --env-file=.env.local db/reset.ts"
+    "db:reset": "node --env-file=.env.local db/reset.ts",
+    "db:images": "node db/images.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

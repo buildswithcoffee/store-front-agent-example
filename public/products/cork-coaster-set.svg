@@ -7,7 +7,7 @@
   </defs>
   <rect width="800" height="800" fill="url(#g)"/>
   <ellipse cx="400" cy="660" rx="230" ry="26" fill="rgba(0,0,0,0.12)"/>
-  <path d="M230 330 H570 L540 640 H260 Z" fill="#d8ccb4"/>
-     <path d="M300 330 Q300 180 400 180 Q500 180 500 330" stroke="#d8ccb4" stroke-width="24" fill="none" stroke-linecap="round"/>
-     <path d="M260 420 H540" stroke="rgba(0,0,0,0.18)" stroke-width="12"/>
+  <circle cx="400" cy="430" r="190" fill="none" stroke="#d8ccb4" stroke-width="60"/>
+     <circle cx="400" cy="430" r="120" fill="none" stroke="#d8ccb4" stroke-width="40"/>
+     <rect x="370" y="210" width="60" height="70" rx="10" fill="#c9b27c"/>
 </svg>
