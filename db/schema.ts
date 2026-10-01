@@ -1,6 +1,9 @@
 // Applied automatically on the app's first request (see lib/db.ts).
 // Every statement is idempotent, so running it again is harmless.
 export const schema = [
+  // Trigram similarity for typo-tolerant search. See findSimilarProducts in lib/store.ts.
+  `create extension if not exists pg_trgm`,
+
   `create table if not exists products (
     id serial primary key,
     slug text unique not null,

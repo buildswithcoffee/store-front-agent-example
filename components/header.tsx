@@ -11,6 +11,14 @@ export async function Header() {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Northstar Goods
         </Link>
+        <form action="/search" className="hidden sm:block">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search the store"
+            className="w-56 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+          />
+        </form>
         <nav className="flex items-center gap-6 text-sm">
           <Link href="/" className="hover:underline">
             Shop
