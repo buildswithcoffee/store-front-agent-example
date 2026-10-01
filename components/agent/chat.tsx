@@ -16,11 +16,13 @@ interface ProductCardData {
 }
 
 // What the panel learned about each turn: the classifier and the intent it chose
-// before the send, and the model Eve selected once the turn started.
+// before the send, the routing note to pass to the agent, and the model Eve
+// selected once the turn started.
 interface TurnInfo {
   classifier?: string;
   intent?: string;
   confidence?: number;
+  note?: string;
   modelId?: string;
 }
 
@@ -41,18 +43,9 @@ export function Chat() {
       await cartReady.current;
       const detected = pendingIntent.current;
       pendingIntent.current = null;
-      return {
-        ...turn,
-        // Becomes turn context the agent's model and instructions resolvers read.
-        clientContext: detected?.intent
-          ? {
-              detectedIntent: {
-                intent: detected.intent,
-                ...(detected.confidence === undefined ? {} : { confidence: detected.confidence }),
-              },
-            }
-          : undefined,
-      };
+      // The routing note travels with the message as turn context. Eve delivers it to the
+      // model as a user message; the agent's model resolver reads the intent out of it.
+      return { ...turn, clientContext: detected?.note };
     },
     onEvent(event) {
       // The first model step of each turn reports which model the router picked.
@@ -182,12 +175,8 @@ async function classify(message: string, recent: RecentMessage[]): Promise<TurnI
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return {};
-    const data = (await response.json()) as {
-      classifier?: string;
-      intent?: string;
-      confidence?: number;
-    };
-    return { classifier: data.classifier, intent: data.intent, confidence: data.confidence };
+    const data = (await response.json()) as TurnInfo;
+    return { classifier: data.classifier, intent: data.intent, confidence: data.confidence, note: data.note };
   } catch {
     return {};
   }
