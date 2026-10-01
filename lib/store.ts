@@ -92,6 +92,26 @@ export async function searchProducts(filters: {
   return rows.map(toProduct);
 }
 
+// Products spelled close to the query, best first. pg_trgm compares words by their
+// overlapping three-letter chunks, so "sweaater" still scores 0.7 against "Sweater".
+// 0.35 keeps "beenie" -> Wool Beanie and drops "shrts", which matches nothing we sell.
+// A gin_trgm_ops index would matter for a large catalog; twenty rows need none.
+export async function findSimilarProducts(query: string, limit = 8): Promise<SimilarProduct[]> {
+  const sql = await db();
+  const rows = await sql`
+    select *, greatest(word_similarity(${query}, name), word_similarity(${query}, category)) as similarity
+    from products
+    where greatest(word_similarity(${query}, name), word_similarity(${query}, category)) >= 0.35
+    order by similarity desc
+    limit ${limit}`;
+  return rows.map((row) => ({ ...toProduct(row), similarity: Number(row.similarity) }));
+}
+
+export interface SimilarProduct extends Product {
+  /** 0 to 1. How close the spelling is to the query. */
+  similarity: number;
+}
+
 export async function getProduct(slug: string): Promise<Product | undefined> {
   const sql = await db();
   const [row] = await sql`select * from products where slug = ${slug}`;
