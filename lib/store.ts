@@ -27,6 +27,9 @@ export interface OrderItem {
   priceCents: number;
 }
 
+export const ORDER_STATUSES = ["processing", "shipped", "delivered", "cancelled"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
 export interface Order {
   number: string;
   email: string;
@@ -203,6 +206,19 @@ export async function getOrder(number: string, email?: string): Promise<Order | 
   const rows = email
     ? await sql`select * from orders where number = ${number} and lower(email) = lower(${email})`
     : await sql`select * from orders where number = ${number}`;
+  return rows[0] && toOrder(rows[0]);
+}
+
+// Newest first, for the admin order list.
+export async function listOrders(): Promise<Order[]> {
+  const sql = await db();
+  const rows = await sql`select * from orders order by id desc`;
+  return rows.map(toOrder);
+}
+
+export async function updateOrderStatus(number: string, status: OrderStatus): Promise<Order | undefined> {
+  const sql = await db();
+  const rows = await sql`update orders set status = ${status} where number = ${number} returning *`;
   return rows[0] && toOrder(rows[0]);
 }
 
