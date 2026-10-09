@@ -87,6 +87,17 @@ Under each message, the drawer shows the intent that was detected and the model 
 
 The search box in the header also handles typos ("sweaater") and vague terms ("athletic").
 
+## Store admin
+
+`/admin/orders` lists every order and lets you change its status. It isn't linked from the storefront. Set `ADMIN_PASSWORD` to turn it on, then sign in at `/admin/login`:
+
+```bash
+vercel env add ADMIN_PASSWORD
+vercel env pull
+```
+
+Add it to each environment you want the admin area in. `vercel env pull` rewrites `.env.local`, so a value you only put in that file by hand is lost on the next pull. Without the variable, the admin area stays locked.
+
 ## How it works
 
 **The store** is a regular Next.js app: a product grid, product pages, a cookie-based cart, and a demo checkout that creates an order without taking payment. All data access goes through `lib/store.ts`. The database is only reachable from the server.
@@ -110,6 +121,9 @@ app/
   search/page.tsx             Search results
   cart/page.tsx               Cart and demo checkout
   orders/[number]/page.tsx    Order confirmation
+  admin/orders/page.tsx       Admin order list with status changes
+  admin/login/page.tsx        Admin sign-in
+  admin/actions.ts            Server actions for admin sign-in and status changes
   setup/page.tsx              Shown when DATABASE_URL is missing
   actions.ts                  Server actions for the cart and checkout
   api/agent/intent/route.ts   Classifies a message and returns the route
@@ -132,6 +146,7 @@ lib/
   db.ts                       Neon client; creates tables and seeds on first use
   store.ts                    Products, carts, orders, and search queries
   search-intent.ts            jev fallback for search
+  admin-auth.ts               Admin password check and session cookie
   cart-cookie.ts, format.ts
 
 db/
@@ -151,6 +166,7 @@ data/
 | `DATABASE_URL` | Neon integration | Postgres connection string |
 | `VERCEL_OIDC_TOKEN` | Vercel | Authenticates to AI Gateway |
 | `AI_GATEWAY_API_KEY` | You (optional) | Use an API key instead of OIDC |
+| `ADMIN_PASSWORD` | You (optional) | Turns on the store admin at `/admin` |
 
 ## Changing the catalog
 
