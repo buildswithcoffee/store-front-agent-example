@@ -57,7 +57,10 @@ export default async function AdminOrdersPage() {
                   {formatPrice(order.items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0))}
                 </td>
                 <td className="px-5 py-3">
-                  <form action={saveOrderStatus} className="flex gap-2">
+                  {/* React resets a form after its action runs, which would put the select back
+                      to the status it first rendered with. Keying on the status remounts the
+                      form with the saved value instead. */}
+                  <form key={order.status} action={saveOrderStatus} className="flex gap-2">
                     <input type="hidden" name="number" value={order.number} />
                     <select
                       name="status"
