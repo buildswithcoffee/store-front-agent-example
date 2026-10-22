@@ -9,6 +9,7 @@
     "jsx": "react-jsx",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "types": ["node", "eve/workflow-modules"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
