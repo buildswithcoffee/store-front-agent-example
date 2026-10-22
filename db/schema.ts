@@ -36,4 +36,33 @@ export const schema = [
     placed_at date not null,
     items jsonb not null
   )`,
+
+  `create table if not exists returns (
+    id serial primary key,
+    order_number text not null,
+    item_slug text not null,
+    item_name text not null,
+    variant text not null default '',
+    quantity integer not null default 1 check (quantity > 0),
+    reason text not null,
+    damage_kind text,
+    resolution text not null,
+    status text not null default 'started',
+    photo_note text,
+    created_at timestamptz not null default now()
+  )`,
+
+  // One pending offer per return. The offer_compensation workflow writes the row,
+  // parks on decision_url, and settles it when an associate posts a decision.
+  `create table if not exists compensation_offers (
+    id serial primary key,
+    return_id integer not null references returns (id) on delete cascade,
+    amount_cents integer not null check (amount_cents > 0),
+    reason text not null,
+    status text not null default 'pending',
+    decision_url text not null,
+    decided_by text,
+    decided_at timestamptz,
+    created_at timestamptz not null default now()
+  )`,
 ];

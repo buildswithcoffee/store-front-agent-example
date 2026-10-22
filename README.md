@@ -98,6 +98,19 @@ vercel env pull
 
 Add it to each environment you want the admin area in. `vercel env pull` rewrites `.env.local`, so a value you only put in that file by hand is lost on the next pull. Without the variable, the admin area stays locked.
 
+## Supplier API
+
+Fulfillment suppliers can update an order's status from their own systems with `PATCH /api/orders/<number>/status`. They send the shared token from `SUPPLIER_API_TOKEN` as a bearer token:
+
+```bash
+curl -X PATCH https://<your-store>/api/orders/1001/status \
+  -H "authorization: Bearer $SUPPLIER_API_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"status":"shipped"}'
+```
+
+The status must be one of `processing`, `shipped`, `delivered`, or `cancelled`. Changes show up in `/admin/orders` and on the customer's order page.
+
 ## How it works
 
 **The store** is a regular Next.js app: a product grid, product pages, a cookie-based cart, and a demo checkout that creates an order without taking payment. All data access goes through `lib/store.ts`. The database is only reachable from the server.
@@ -129,6 +142,7 @@ app/
   api/agent/intent/route.ts   Classifies a message and returns the route
   api/agent/session/route.ts  Makes sure the cart cookie exists before chatting
   api/search/intent/route.ts  The search fallback as JSON
+  api/orders/[number]/status/route.ts  Supplier API for order status
 
 agent/
   agent.ts                    Routing table and per-turn model selection
@@ -167,6 +181,7 @@ data/
 | `VERCEL_OIDC_TOKEN` | Vercel | Authenticates to AI Gateway |
 | `AI_GATEWAY_API_KEY` | You (optional) | Use an API key instead of OIDC |
 | `ADMIN_PASSWORD` | You (optional) | Turns on the store admin at `/admin` |
+| `SUPPLIER_API_TOKEN` | You (optional) | Shared token for the supplier API |
 
 ## Changing the catalog
 
