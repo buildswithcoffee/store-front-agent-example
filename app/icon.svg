@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Northern Goods favicon: see public/brand/ for the full logo set -->
+  <rect width="512" height="512" rx="104" fill="#171717"/>
+  <path d="M136 376 V136 h58 l124 158 V136 h58 v240 h-58 L194 218 v158 Z" fill="#fafaf9"/>
+  <path d="M376 96 L385 133 L420 142 L385 151 L376 188 L367 151 L332 142 L367 133 Z" fill="#fbbf24"/>
+</svg>
