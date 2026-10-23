@@ -84,9 +84,13 @@ export async function createReturn(input: {
   return toReturn(row);
 }
 
-export async function getReturn(id: number): Promise<Return | undefined> {
+// The most recent return for an item on an order. Tools address returns this way
+// because models copy order numbers and product slugs reliably, but not row ids.
+export async function findLatestReturn(orderNumber: string, itemSlug: string): Promise<Return | undefined> {
   const sql = await db();
-  const [row] = await sql`select * from returns where id = ${id}`;
+  const [row] = await sql`
+    select * from returns where order_number = ${orderNumber} and item_slug = ${itemSlug}
+    order by id desc limit 1`;
   return row && toReturn(row);
 }
 
@@ -106,11 +110,12 @@ function resolveDecisionUrl(decisionUrl: string): string {
 export async function fileOffer(
   input: { returnId: number; amountCents: number; reason: string },
   decisionUrl: string,
+  workflowRunId: string,
 ): Promise<CompensationOffer> {
   const sql = await db();
   const [row] = await sql`
-    insert into compensation_offers (return_id, amount_cents, reason, decision_url)
-    values (${input.returnId}, ${input.amountCents}, ${input.reason}, ${resolveDecisionUrl(decisionUrl)})
+    insert into compensation_offers (return_id, amount_cents, reason, decision_url, workflow_run_id)
+    values (${input.returnId}, ${input.amountCents}, ${input.reason}, ${resolveDecisionUrl(decisionUrl)}, ${workflowRunId})
     returning *`;
   return toOffer(row);
 }
