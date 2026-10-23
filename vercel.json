@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    {
+      "src": "^/\\.well-known/workflow/v1/webhook/(.*)$",
+      "destination": { "type": "service", "service": "eve" }
+    }
+  ]
+}
