@@ -94,16 +94,24 @@ export async function findLatestReturn(orderNumber: string, itemSlug: string): P
   return row && toReturn(row);
 }
 
-// In `next dev`, workflow webhooks are served by eve's dev control server, not the
-// Next.js port that createWebhook puts in the URL. Deployed, the app origin serves
-// them and EVE_DEV_CONTROL_URL is unset, so the URL passes through unchanged.
+// createWebhook builds the URL from the origin the run started on, which callers
+// outside this deployment can't always reach:
+// - In `next dev`, webhooks are served by eve's dev control server, not the Next.js port.
+// - In production, it's the deployment-specific URL, which Deployment Protection puts
+//   behind a Vercel login. The production domain is public; vercel.json routes the
+//   webhook path there to the eve service.
 function resolveDecisionUrl(decisionUrl: string): string {
-  const control = process.env.EVE_DEV_CONTROL_URL;
-  if (!control) return decisionUrl;
   const url = new URL(decisionUrl);
-  const controlUrl = new URL(control);
-  url.protocol = controlUrl.protocol;
-  url.host = controlUrl.host;
+  const control = process.env.EVE_DEV_CONTROL_URL;
+  const production = process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (control) {
+    const controlUrl = new URL(control);
+    url.protocol = controlUrl.protocol;
+    url.host = controlUrl.host;
+  } else if (production) {
+    url.protocol = "https:";
+    url.host = production;
+  }
   return url.toString();
 }
 
