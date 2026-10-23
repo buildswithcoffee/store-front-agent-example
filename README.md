@@ -1,6 +1,6 @@
 # Northstar Goods - Example Storefront with Jev-powered Search and Agent via Vercel AI Gateway
 
-A demo storefront with an AI shopping assistant. It is a Next.js app backed by a Neon Postgres database, with an [Eve](https://eve.dev) agent that picks a model for each message based on what the shopper is asking.
+A demo storefront with Scout, an AI shopping assistant. It is a Next.js app backed by a Neon Postgres database, with an [Eve](https://eve.dev) agent that picks a model for each message based on what the shopper is asking.
 
 ## Getting started
 
@@ -74,7 +74,7 @@ You need Node 24 and the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g ve
 
 ## Things to try
 
-Open the assistant with the "Ask the store" button and try:
+Open Scout with the "Ask Scout" button and try:
 
 - "a jacket under $150"
 - "does the trail shell jacket run big? I wear a medium"
@@ -115,7 +115,7 @@ The status must be one of `processing`, `shipped`, `delivered`, or `cancelled`. 
 
 **The store** is a regular Next.js app: a product grid, product pages, a cookie-based cart, and a demo checkout that creates an order without taking payment. All data access goes through `lib/store.ts`. The database is only reachable from the server.
 
-**The assistant** is an Eve agent in `agent/`. For each message:
+**Scout**, the assistant, is an Eve agent in `agent/`. For each message:
 
 1. The chat drawer sends the message to `/api/agent/intent`, which uses [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) to classify it into one of seven intents (sizing, shipping, returns, and so on).
 2. The intent is looked up in the `ROUTES` table in `agent/agent.ts`. Each row sets the model, a fallback model, the reasoning effort, and an optional skill.
@@ -146,7 +146,7 @@ app/
 
 agent/
   agent.ts                    Routing table and per-turn model selection
-  instructions.md             The assistant's system prompt
+  instructions.md             Scout's system prompt
   channels/eve.ts             Chat endpoint; attaches the cart to the session
   lib/classify.ts             Intents and the jev classifier
   tools/                      Catalog, cart, and order tools
