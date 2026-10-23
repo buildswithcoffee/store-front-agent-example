@@ -11,7 +11,7 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 export const metadata: Metadata = {
   title: "Northstar Goods",
-  description: "A small storefront with an AI shopping assistant, built to try out Vercel.",
+  description: "A small storefront with Scout, an AI shopping assistant, built to try out Vercel.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

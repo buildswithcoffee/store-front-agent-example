@@ -67,7 +67,7 @@ export default async function CartPage() {
           <button type="submit" className="w-full rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white hover:bg-neutral-800">
             Place order
           </button>
-          <p className="text-xs text-neutral-500">No payment is taken. This creates a demo order you can ask the assistant about.</p>
+          <p className="text-xs text-neutral-500">No payment is taken. This creates a demo order you can ask Scout about.</p>
         </form>
       </aside>
     </div>

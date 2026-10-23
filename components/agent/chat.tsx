@@ -92,7 +92,7 @@ export function Chat() {
         onClick={() => setOpen(true)}
         className="fixed right-4 bottom-4 rounded-full bg-neutral-900 px-5 py-3 text-sm font-medium text-white shadow-lg hover:bg-neutral-800"
       >
-        Ask the store
+        Ask Scout
       </button>
     );
   }
@@ -103,7 +103,7 @@ export function Chat() {
     <div className="fixed inset-x-0 bottom-0 z-50 flex h-[75vh] flex-col rounded-t-2xl bg-white shadow-2xl ring-1 ring-neutral-200 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:h-[600px] sm:w-[400px] sm:rounded-2xl">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold">Northstar assistant</p>
+          <p className="text-sm font-semibold">Scout</p>
           <p className="text-xs text-neutral-500">Products, sizing, orders, and your cart</p>
         </div>
         <div className="flex gap-3 text-xs text-neutral-500">
