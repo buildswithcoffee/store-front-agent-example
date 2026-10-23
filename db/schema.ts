@@ -65,4 +65,8 @@ export const schema = [
     decided_at timestamptz,
     created_at timestamptz not null default now()
   )`,
+
+  // The offer_compensation run that owns the offer, so the employee app can link
+  // straight to it in the Vercel Workflows dashboard.
+  `alter table compensation_offers add column if not exists workflow_run_id text`,
 ];
