@@ -30,7 +30,7 @@ export default defineAgent({
       "turn.started": async (_event, ctx) => {
         let intent = intentFromMessages(ctx.messages);
 
-        // No intent detected yet, classify with jev
+        // No intent detected yet, classify with the evaluation model
         if (!intent) { 
           const recent = recentFromHistory(ctx.messages);
           const latest = recent.at(-1);

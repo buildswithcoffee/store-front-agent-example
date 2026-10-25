@@ -230,7 +230,7 @@ function recentFrom(messages: readonly EveMessage[], limit = 4): RecentMessage[]
     .slice(-limit);
 }
 
-// Ask the server to classify the message with jev. Bounded so a slow classifier
+// Ask the server to classify the message with the evaluation model. Bounded so a slow classifier
 // never delays the shopper; without an answer the agent classifies for itself.
 async function classify(message: string, recent: RecentMessage[], hasPhoto: boolean): Promise<TurnInfo> {
   try {

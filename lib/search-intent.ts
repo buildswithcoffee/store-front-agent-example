@@ -1,7 +1,8 @@
 import { experimental_evaluate as evaluate } from "ai";
+import { EVALUATION_MODEL } from "./evaluation-model";
 import { getCategories, getProducts, type Product } from "./store";
 
-// What each department sells, in the shopper's words. jev routes on these descriptions
+// What each department sells, in the shopper's words. The evaluation model routes on these descriptions
 const DEPARTMENTS: Record<string, string> = {
   Apparel: "Clothing and things you wear: jackets, vests, sweaters, shirts, tees, pants, shorts, caps, gloves, activewear, base layers.",
   Bags: "Bags and luggage: backpacks, totes, duffels, slings, hip packs, messengers, packing cubes, laptop sleeves, travel kits.",
@@ -17,6 +18,8 @@ export interface SearchGuess {
   category: string;
   confidence: number;
   products: RankedProduct[];
+  /** The model that ranked the products, as the gateway resolved it. */
+  model: string;
 }
 
 
@@ -25,7 +28,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
 
   const department = await evaluate({
     abortSignal,
-    model: "typesafe-ai/jev",
+    model: EVALUATION_MODEL,
     state: { query },
     questions: {
       category: {
@@ -40,7 +43,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
   });
 
 
-  // Step 1: Take the most likely department as long as jev gives it a real chance
+  // Step 1: Take the most likely department as long as the model gives it a real chance
   const odds: Record<string, number> = department.answers.category.probabilities ?? {};
   const [category, confidence] = categories
     .map((c) => [c, odds[c] ?? 0] as const)
@@ -52,7 +55,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
   // Step 2: Rank the products within it
   const ranking = await evaluate({
     abortSignal,
-    model: "typesafe-ai/jev",
+    model: EVALUATION_MODEL,
     state: { query },
     questions: {
       product: {
@@ -68,6 +71,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
   return {
     category,
     confidence,
+    model: ranking.response.modelId || EVALUATION_MODEL,
     products: products
       .map((p) => ({ ...p, confidence: probabilities[p.slug] ?? 0 }))
       .sort((a, b) => b.confidence - a.confidence),
