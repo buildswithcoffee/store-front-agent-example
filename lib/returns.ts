@@ -26,7 +26,10 @@ export interface Return {
 export interface CompensationOffer {
   id: number;
   returnId: number;
+  /** The agent's original proposal. Never changes. */
   amountCents: number;
+  /** What the associate granted: the latest adjustment, or the proposal if none. */
+  approvedAmountCents: number | null;
   reason: string;
   status: "pending" | "approved" | "declined";
   decidedBy: string | null;
@@ -58,6 +61,7 @@ function toOffer(row: Record<string, unknown>): CompensationOffer {
     id: row.id as number,
     returnId: row.return_id as number,
     amountCents: row.amount_cents as number,
+    approvedAmountCents: row.approved_amount_cents as number | null,
     reason: row.reason as string,
     status: row.status as CompensationOffer["status"],
     decidedBy: row.decided_by as string | null,
@@ -128,13 +132,20 @@ export async function fileOffer(
   return toOffer(row);
 }
 
+// The granted amount comes from the audit trail in the database, never from the
+// decision payload, so whoever holds the webhook URL can approve or decline but
+// can't choose the amount.
 export async function settleOffer(offerId: number, decision: OfferDecision): Promise<CompensationOffer> {
   const status = decision.decision === "approved" ? "approved" : "declined";
   const sql = await db();
   const [row] = await sql`
-    update compensation_offers
-    set status = ${status}, decided_by = ${decision.decidedBy ?? "Store associate"}, decided_at = now()
-    where id = ${offerId} and status = 'pending'
+    update compensation_offers co
+    set status = ${status}, decided_by = ${decision.decidedBy ?? "Store associate"}, decided_at = now(),
+        approved_amount_cents = case when ${status}::text = 'approved' then coalesce(
+          (select a.amount_cents from offer_adjustments a where a.offer_id = co.id order by a.id desc limit 1),
+          co.amount_cents
+        ) end
+    where co.id = ${offerId} and co.status = 'pending'
     returning *`;
   if (!row) throw new Error(`Offer ${offerId} is not pending.`);
   return toOffer(row);
