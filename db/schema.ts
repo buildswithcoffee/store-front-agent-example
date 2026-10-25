@@ -69,4 +69,17 @@ export const schema = [
   // The offer_compensation run that owns the offer, so the employee app can link
   // straight to it in the Vercel Workflows dashboard.
   `alter table compensation_offers add column if not exists workflow_run_id text`,
+
+  // amount_cents stays the agent's original proposal. Associates record changes as
+  // offer_adjustments rows (the audit trail), and approval stores the amount granted.
+  `alter table compensation_offers add column if not exists approved_amount_cents integer`,
+
+  `create table if not exists offer_adjustments (
+    id serial primary key,
+    offer_id integer not null references compensation_offers (id) on delete cascade,
+    amount_cents integer not null check (amount_cents > 0),
+    note text not null,
+    adjusted_by text not null,
+    created_at timestamptz not null default now()
+  )`,
 ];

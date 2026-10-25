@@ -32,17 +32,25 @@ export default defineWorkflowTool({
 
     // Mint the URL an associate's decision will arrive on, then file the offer.
     const approval = createWebhook();
-    const offer = await fileCompensationOffer(
+    const filed = await fileCompensationOffer(
       { returnId: item.id, amountCents, reason },
       approval.url,
       getWorkflowMetadata().workflowRunId,
     );
 
     // Pause here, durably, until a person decides. Minutes or days; nothing runs in between.
+    // Associates may adjust the amount while it waits; every change is kept as an audit trail.
     const decision = (await (await approval).json()) as OfferDecision;
+    const offer = await recordAssociateDecision(filed.id, decision);
 
-    await setAttributes({ stage: `${decision.decision} by associate` });
-    return recordAssociateDecision(offer.id, decision);
+    const granted = offer.approvedAmountCents;
+    await setAttributes({
+      stage: `${offer.status} by associate`,
+      ...(granted !== null && granted !== amountCents
+        ? { credit: `${formatPrice(granted)} (proposed ${formatPrice(amountCents)})` }
+        : {}),
+    });
+    return offer;
   },
 });
 
