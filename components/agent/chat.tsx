@@ -24,12 +24,24 @@ interface TurnInfo {
   confidence?: number;
   note?: string;
   modelId?: string;
+  // The photo sent with this turn. Eve does not echo attachment bytes back, so the
+  // drawer keeps its own copy to show in the conversation.
+  imageUrl?: string;
+}
+
+// A photo waiting in the composer. The data URL is both the preview and what the agent gets.
+interface Attachment {
+  dataUrl: string;
+  mediaType: string;
+  filename: string;
 }
 
 export function Chat() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [turns, setTurns] = useState<TurnInfo[]>([]);
+  const [photo, setPhoto] = useState<Attachment | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const cartReady = useRef<Promise<unknown> | null>(null);
   const pendingIntent = useRef<TurnInfo | null>(null);
@@ -69,14 +81,37 @@ export function Chat() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || busy) return;
+    const attached = photo;
+    if ((!text && !attached) || busy) return;
     setDraft("");
+    setPhoto(null);
     // Classify first (bounded), so the badge and the routing use the same answer.
     // Recent messages let a short follow-up keep the topic of the conversation.
-    const detected = await classify(text, recentFrom(agent.data.messages));
+    const detected = await classify(text, recentFrom(agent.data.messages), attached !== null);
     pendingIntent.current = detected;
-    setTurns((all) => [...all, detected]);
-    void agent.send(text);
+    setTurns((all) => [...all, { ...detected, imageUrl: attached?.dataUrl }]);
+    if (!attached) {
+      void agent.send(text);
+      return;
+    }
+    // A message can mix text and file parts. The channel checks the type and size,
+    // and Eve hands the image to whichever model the router picked.
+    void agent.send([
+      ...(text ? [{ type: "text" as const, text }] : []),
+      { type: "file" as const, data: attached.dataUrl, mediaType: attached.mediaType, filename: attached.filename },
+    ]);
+  }
+
+  async function attach(file: File | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    setPhoto(await prepareImage(file));
+  }
+
+  function onPaste(event: React.ClipboardEvent) {
+    const file = Array.from(event.clipboardData.files).find((f) => f.type.startsWith("image/"));
+    if (!file) return;
+    event.preventDefault();
+    void attach(file);
   }
 
   function reset() {
@@ -130,21 +165,52 @@ export function Chat() {
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={submit} className="flex gap-2 border-t border-neutral-200 p-3">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={busy ? "Thinking…" : "Ask about products, sizing, or your order"}
-          disabled={busy}
-          className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={busy || !draft.trim()}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-        >
-          Send
-        </button>
+      <form onSubmit={submit} className="border-t border-neutral-200 p-3">
+        {photo && (
+          <div className="mb-2 flex items-center gap-3">
+            <img src={photo.dataUrl} alt="" className="h-14 w-14 rounded-lg object-cover ring-1 ring-neutral-200" />
+            <button type="button" onClick={() => setPhoto(null)} className="text-xs text-neutral-500 hover:text-neutral-900">
+              Remove photo
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              void attach(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+            aria-label="Attach a photo"
+            title="Attach a photo"
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+          >
+            <CameraIcon />
+          </button>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onPaste={onPaste}
+            placeholder={busy ? "Thinking…" : photo ? "Ask about this photo, or just send it" : "Ask about products, sizing, or your order"}
+            disabled={busy}
+            className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={busy || (!draft.trim() && !photo)}
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Send
+          </button>
+        </div>
       </form>
     </div>
   );
@@ -166,12 +232,12 @@ function recentFrom(messages: readonly EveMessage[], limit = 4): RecentMessage[]
 
 // Ask the server to classify the message with jev. Bounded so a slow classifier
 // never delays the shopper; without an answer the agent classifies for itself.
-async function classify(message: string, recent: RecentMessage[]): Promise<TurnInfo> {
+async function classify(message: string, recent: RecentMessage[], hasPhoto: boolean): Promise<TurnInfo> {
   try {
     const response = await fetch("/api/agent/intent", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message, recent }),
+      body: JSON.stringify({ message, recent, hasPhoto }),
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return {};
@@ -186,13 +252,20 @@ function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
   if (message.role !== "user") return <AssistantMessage message={message} info={info} />;
   return (
     <div className="flex flex-col items-end gap-1">
-      {message.parts.map((part, index) =>
-        part.type === "text" && part.text ? (
+      {message.parts.map((part, index) => {
+        if (part.type === "file" && part.mediaType.startsWith("image/")) {
+          // Eve returns a URL only for browser-resolvable attachments, so fall back to our copy.
+          const src = part.url ?? info?.imageUrl;
+          return src ? (
+            <img key={index} src={src} alt={part.filename ?? "Attached photo"} className="max-w-[60%] rounded-2xl ring-1 ring-neutral-200" />
+          ) : null;
+        }
+        return part.type === "text" && part.text ? (
           <p key={index} className="max-w-[85%] rounded-2xl bg-neutral-900 px-3 py-2 text-sm text-white">
             {part.text}
           </p>
-        ) : null,
-      )}
+        ) : null;
+      })}
       {info && <IntentChips info={info} />}
     </div>
   );
@@ -333,4 +406,48 @@ function skillName(input: unknown): string {
     if (typeof value === "string") return value;
   }
   return "";
+}
+
+// Shrink the photo before it leaves the browser. Phone photos run to several megabytes
+// and 1280px on the long edge is plenty for the model. Re-encoding as JPEG also drops
+// the location and camera metadata phones embed.
+const MAX_EDGE = 1280;
+
+async function prepareImage(file: File): Promise<Attachment> {
+  const stem = file.name.replace(/\.[^.]+$/, "") || "photo";
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No canvas");
+    ctx.fillStyle = "#fff"; // JPEG has no transparency; avoid black backgrounds.
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), mediaType: "image/jpeg", filename: `${stem}.jpg` };
+  } catch {
+    // The browser could not decode it (some HEIC files); send the original as is.
+    return { dataUrl: await readAsDataUrl(file), mediaType: file.type, filename: file.name };
+  }
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function CameraIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
 }

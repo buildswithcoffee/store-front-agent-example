@@ -1,11 +1,11 @@
 import { experimental_evaluate as evaluate, type ModelMessage } from "ai";
 
 export const SHOPPER_INTENTS = {
-  Personal_shopping: "Wants help choosing what to buy.",
-  Product_details: "Asking about a product's specs, materials, or availability.",
+  Personal_shopping: "Wants help choosing what to buy, including finding things like a photo they shared.",
+  Product_details: "Asking about a product's specs, materials, or availability, or whether we sell something shown in a photo.",
   Sizing: "Asking about size or fit.",
   Promotions: "Asking about discounts or deals.",
-  Refunds_and_exchanges: "Wants to return or exchange an item, or get money back.",
+  Refunds_and_exchanges: "Wants to return or exchange an item, get money back, or shows a damaged or wrong item.",
   Technical_support: "Something on the site is broken or not working.",
   Shipping: "Questions about how to get the product, change addresses, special instructions on receiving.",
 } as const;
@@ -15,18 +15,29 @@ export type ShopperIntent = keyof typeof SHOPPER_INTENTS;
 type RecentMessage = { role: "user" | "assistant"; text: string };
 
 
-// Ask jev which intent a message has. `recent` keeps a follow-up on topic.
-export async function classifyIntent(message: string, recent: RecentMessage[] = [], abortSignal?: AbortSignal) {
+// Ask jev which intent a message has. `recent` keeps a follow-up on topic. The classifier
+// only reads text, so `hasPhoto` tells it when a photo came along with the words.
+export async function classifyIntent(
+  message: string,
+  recent: RecentMessage[] = [],
+  abortSignal?: AbortSignal,
+  hasPhoto = false,
+) {
   const { answers } = await evaluate({
     abortSignal,
 
     model: "typesafe-ai/jev",
-    state: { recent, message },
+    state: {
+      recent,
+      message,
+      photo: hasPhoto ? "The shopper attached a photo to this message." : "No photo attached.",
+    },
     questions: {
       intent: {
         type: "choice",
         instructions:
-          "What is the shopper asking for in `message`? Use `recent` only to resolve what a short follow-up refers to.",
+          "What is the shopper asking for in `message`? Use `recent` only to resolve what a short follow-up refers to. " +
+          "`photo` says whether a photo came with the message. A photo with little or no text is usually about finding or identifying products, unless the words mention damage or a problem.",
         criteria: SHOPPER_INTENTS,
       },
     },
