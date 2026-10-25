@@ -7,7 +7,9 @@ export default eveChannel({
   auth: [vercelOidc(), localDev(), none()],
   audience: "public",
   turnPolicy: "queue",
-  uploadPolicy: "disabled",
+  // Shoppers can attach photos: inspiration, "do you sell this?", or a damaged item.
+  // The drawer resizes images before sending; the cap is a backstop, under Vercel's 4.5 MB body limit.
+  uploadPolicy: { allowedMediaTypes: ["image/*"], maxBytes: 4 * 1024 * 1024 },
   onMessage({ eve }) {
     const caller = eve.caller;
     if (!caller) return { auth: null };

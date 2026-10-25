@@ -22,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^24",
     "@types/react": "^19",
+    "just-bash": "^3.6.0",
     "typescript": "^5"
   }
 }

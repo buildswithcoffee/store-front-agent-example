@@ -82,6 +82,7 @@ Open Scout with the "Ask Scout" button and try:
 - "what's in my cart?"
 - "how long does shipping take?" then "does that apply to Alaska?"
 - "I want to return the beanie from order 1001, my email is demo@example.com"
+- Attach a photo (the camera button, or paste one) and ask "do you have anything like this?"
 
 Under each message, the drawer shows the intent that was detected and the model that answered. Ask a sizing question and then a returns question to see the model change.
 
