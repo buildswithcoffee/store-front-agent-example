@@ -181,9 +181,9 @@ data/
 
 | Case | Rule |
 | --- | --- |
-| Jordan's hiking-trip story | Exactly 10% ($15 on the $149 jacket), with approval requested |
+| Jordan's hiking-trip story | $15 to $25 on the $149 jacket (10% to about 15%), with approval requested |
 | Five other hardship stories | Same rule |
-| Alex's short message | Same rule |
+| Alex's short message | Exactly 10% ($15), since there's no hardship story |
 | A changed-mind return | No credit at all |
 
 The evals run against a deployment. Compare two of them, such as a preview of `main` and a preview of a pull request, and open the results page:
