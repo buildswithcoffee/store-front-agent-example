@@ -1,5 +1,6 @@
 // Run Scout's compensation evals against a deployment and compare two runs on one page.
 //
+//   npm run evals:compare [before-url] [after-url]   run both, one after the other, then open the page
 //   npm run evals:before [url]   run against the "before" deployment, save as evals/results/before
 //   npm run evals:after [url]    run against the "after" deployment, save it, then open the page
 //   npm run evals:report         rebuild the page from the two saved runs
@@ -25,15 +26,19 @@ const CASES: Record<string, { title: string; shopper: string; expectsCredit: boo
 
 type Label = "before" | "after";
 
-const [command, urlArg] = process.argv.slice(2);
+const [command, firstUrl, secondUrl] = process.argv.slice(2);
 
-if (command === "before" || command === "after") {
-  run(command, urlArg);
+if (command === "compare") {
+  run("before", firstUrl);
+  run("after", secondUrl);
+  buildPage();
+} else if (command === "before" || command === "after") {
+  run(command, firstUrl);
   if (command === "after") buildPage();
 } else if (command === "report") {
   buildPage();
 } else {
-  console.error("Usage: node scripts/evals.mts before|after [url] | report");
+  console.error("Usage: node scripts/evals.mts compare [before-url] [after-url] | before|after [url] | report");
   process.exit(2);
 }
 
@@ -46,7 +51,7 @@ function run(label: Label, urlArg: string | undefined) {
   }
 
   const started = Date.now();
-  console.log(`Running Scout's compensation evals against ${url}\n`);
+  console.log(`\n${label.toUpperCase()}: running Scout's compensation evals against ${url}\n`);
   const eve = spawnSync(join("node_modules", ".bin", "eve"), ["eval", "compensation", "--url", url], { stdio: "inherit" });
   // Exit code 1 only means some attempts failed, which is expected before the fix.
   if (eve.status === 2 || eve.status === null) process.exit(eve.status ?? 1);
