@@ -189,11 +189,10 @@ data/
 The evals run against a deployment. Compare two of them, such as a preview of `main` and a preview of a pull request, and open the results page:
 
 ```bash
-npm run evals:before -- https://<before-deployment>
-npm run evals:after -- https://<after-deployment>
+npm run evals:compare -- https://<before-deployment> https://<after-deployment>
 ```
 
-`evals:after` opens `evals/results/report.html` when it finishes. `npm run evals:report` rebuilds it from the saved runs. To skip the addresses, put `EVALS_BEFORE_URL` and `EVALS_AFTER_URL` in `.env.evals`.
+That runs both, one after the other, about five minutes in all. To run one side at a time, use `npm run evals:before -- <url>` or `npm run evals:after -- <url>`. `evals:compare` and `evals:after` open `evals/results/report.html` when it finishes. `npm run evals:report` rebuilds it from the saved runs. To skip the addresses, put `EVALS_BEFORE_URL` and `EVALS_AFTER_URL` in `.env.evals`.
 
 Each attempt creates its own delivered jacket order for an `evals.example.com` address, chats with Scout about it, then declines any credit Scout proposed and deletes the order and its returns. The orders go into the database in `.env.local`, so that must be the same database the deployments under test use. The photo the shoppers send is `evals/photos/torn-jacket.jpg`.
 
