@@ -1,5 +1,5 @@
-import { experimental_evaluate as evaluate } from "ai";
-import { answeringModel, EVALUATION_MODEL } from "./evaluation-model";
+import { experimental_decide as decide } from "ai";
+import { answeringModel, EVALUATION_MODEL, unlessRefused } from "./evaluation-model";
 import { getCategories, getProducts, type Product } from "./store";
 
 // What each department sells, in the shopper's words. The evaluation model routes on these descriptions
@@ -26,7 +26,7 @@ export interface SearchGuess {
 export async function guessSearch(query: string, abortSignal?: AbortSignal): Promise<SearchGuess | null> {
   const categories = await getCategories();
 
-  const department = await evaluate({
+  const department = await unlessRefused(decide({
     abortSignal,
     model: EVALUATION_MODEL,
     state: { query },
@@ -40,7 +40,8 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
         },
       },
     },
-  });
+  }));
+  if (!department) return null; // The model refused: no confident department
 
 
   // Step 1: Take the most likely department as long as the model gives it a real chance
@@ -53,7 +54,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
 
 
   // Step 2: Rank the products within it
-  const ranking = await evaluate({
+  const ranking = await unlessRefused(decide({
     abortSignal,
     model: EVALUATION_MODEL,
     state: { query },
@@ -64,7 +65,8 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
         criteria: Object.fromEntries(products.map((p) => [p.slug, `${p.name}. ${p.description}`])),
       },
     },
-  });
+  }));
+  if (!ranking) return null; // The model refused: no product is a confident match
 
 
   const probabilities = ranking.answers.product.probabilities ?? {};
