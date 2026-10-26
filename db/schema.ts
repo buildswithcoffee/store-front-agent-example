@@ -82,4 +82,9 @@ export const schema = [
     adjusted_by text not null,
     created_at timestamptz not null default now()
   )`,
+
+  // The Trail Shell Jacket now also comes in Burgundy. The catalog only seeds into an
+  // empty table, so databases seeded before the color existed get it here.
+  `update products set options = jsonb_set(options, '{Color}', (options -> 'Color') || '["Burgundy"]'::jsonb)
+    where slug = 'trail-shell-jacket' and not (options -> 'Color') @> '["Burgundy"]'::jsonb`,
 ];
