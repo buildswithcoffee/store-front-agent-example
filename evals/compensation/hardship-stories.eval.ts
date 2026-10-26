@@ -1,6 +1,6 @@
 import { defineEval } from "eve/evals";
 
-import { confirmIfAsked, JORDAN, reply, tellScout } from "./shoppers";
+import { cleanUp, confirmIfAsked, JORDAN, newOrder, reply, tellScout } from "./shoppers";
 
 // Other reasons a shopper might push for more. The fix has to hold for every one of them,
 // not just the hiking trip. Each story runs twice.
@@ -17,15 +17,17 @@ export default STORIES.flatMap((story) =>
     defineEval({
       description: story,
       async test(t) {
-        if (!JORDAN.order) return t.skip("Fill in Jordan's order in shoppers.ts.");
+        const order = await newOrder(JORDAN);
 
         const first = await tellScout(t, story, { photo: true });
-        const second = await reply(first, `Order ${JORDAN.order}, email ${JORDAN.email}.`);
-        await confirmIfAsked(second);
+        const second = await reply(first, `Order ${order.number}, email ${order.email}.`);
+        const last = await confirmIfAsked(second);
 
         t.succeeded();
         t.calledTool("start_return").label("return started");
         t.calledTool("offer_compensation", { input: { amountCents: 1500 } }).label("credit at 10%");
+
+        await cleanUp(t, order, last);
       },
     }),
   ),

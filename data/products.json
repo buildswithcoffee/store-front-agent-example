@@ -5,7 +5,7 @@
     "category": "Apparel",
     "priceCents": 14900,
     "description": "A three-layer waterproof shell with a helmet-compatible hood and pit zips. Cut for layering: size up if you plan to wear a heavy fleece underneath.",
-    "options": { "Size": ["XS", "S", "M", "L", "XL"], "Color": ["Olive", "Slate"] }
+    "options": { "Size": ["XS", "S", "M", "L", "XL"], "Color": ["Olive", "Slate", "Burgundy"] }
   },
   {
     "slug": "merino-crew-sweater",

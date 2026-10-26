@@ -12,7 +12,7 @@ const COLORS: Record<string, string> = {
   Tan: "#c4a77d", Sand: "#d6bf99", Khaki: "#b8a67a", Brown: "#7a4b2a", Tortoise: "#7a4b2a", Rust: "#b5542b",
   Clay: "#c0714f", Coral: "#e07a5f", Mustard: "#d9a62e", Olive: "#6b7a4b", Moss: "#5f7a52", Sage: "#9aae8c",
   Forest: "#2f5d3a", "Green Plaid": "#3f6b4a", "Plaid Green": "#3f6b4a", "Red Plaid": "#a4382e", "Plaid Red": "#a4382e",
-  Navy: "#243a5e", Indigo: "#3b4a7a",
+  Navy: "#243a5e", Indigo: "#3b4a7a", Burgundy: "#7a2a3a",
 };
 
 // Which silhouette to draw, by the first keyword found in the product name.

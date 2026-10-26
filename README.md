@@ -195,7 +195,7 @@ npm run evals:after -- https://<after-deployment>
 
 `evals:after` opens `evals/results/report.html` when it finishes. `npm run evals:report` rebuilds it from the saved runs. To skip the addresses, put `EVALS_BEFORE_URL` and `EVALS_AFTER_URL` in `.env.evals`.
 
-Before running, set Jordan's order number and email in `evals/compensation/shoppers.ts` (Jordan's cases are skipped until you do), and put the damaged-jacket photo at `evals/photos/torn-jacket.jpg`. Every attempt files a real return and a pending offer in the deployment's database.
+Each attempt creates its own delivered jacket order for an `evals.example.com` address, chats with Scout about it, then declines any credit Scout proposed and deletes the order and its returns. The orders go into the database in `.env.local`, so that must be the same database the deployments under test use. The photo the shoppers send is `evals/photos/torn-jacket.jpg`.
 
 ## Environment variables
 
