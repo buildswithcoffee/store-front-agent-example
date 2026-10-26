@@ -1,6 +1,6 @@
 import { experimental_evaluate as evaluate, type ModelMessage } from "ai";
 
-import { EVALUATION_MODEL } from "../../lib/evaluation-model";
+import { answeringModel, EVALUATION_MODEL } from "../../lib/evaluation-model";
 
 export const SHOPPER_INTENTS = {
   Personal_shopping: "Wants help choosing what to buy, including finding things like a photo they shared.",
@@ -25,7 +25,7 @@ export async function classifyIntent(
   abortSignal?: AbortSignal,
   hasPhoto = false,
 ) {
-  const { answers, response } = await evaluate({
+  const result = await evaluate({
     abortSignal,
     model: EVALUATION_MODEL,
     state: {
@@ -44,13 +44,13 @@ export async function classifyIntent(
     },
   });
 
-  const { choice, probabilities } = answers.intent;
+  const { choice, probabilities } = result.answers.intent;
 
   return {
     intent: choice,
     confidence: probabilities?.[choice],
     // Whichever model in the virtual model's chain answered, so the drawer can show a fallback.
-    classifier: response.modelId || EVALUATION_MODEL,
+    classifier: answeringModel(result),
   };
 }
 

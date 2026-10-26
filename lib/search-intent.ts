@@ -1,5 +1,5 @@
 import { experimental_evaluate as evaluate } from "ai";
-import { EVALUATION_MODEL } from "./evaluation-model";
+import { answeringModel, EVALUATION_MODEL } from "./evaluation-model";
 import { getCategories, getProducts, type Product } from "./store";
 
 // What each department sells, in the shopper's words. The evaluation model routes on these descriptions
@@ -18,7 +18,7 @@ export interface SearchGuess {
   category: string;
   confidence: number;
   products: RankedProduct[];
-  /** The model that ranked the products, as the gateway resolved it. */
+  /** The model in the virtual model's chain that ranked the products. */
   model: string;
 }
 
@@ -71,7 +71,7 @@ export async function guessSearch(query: string, abortSignal?: AbortSignal): Pro
   return {
     category,
     confidence,
-    model: ranking.response.modelId || EVALUATION_MODEL,
+    model: answeringModel(ranking),
     products: products
       .map((p) => ({ ...p, confidence: probabilities[p.slug] ?? 0 }))
       .sort((a, b) => b.confidence - a.confidence),
