@@ -15,7 +15,7 @@ export const ROUTES: Record<ShopperIntent, Route> = {
   Product_details:       { model: "openai/gpt-5.4-nano",          fallbacks: ["google/gemini-3.1-flash-lite"],  reasoning: "low",    skill: null },
   Sizing:                { model: "google/gemini-3.5-flash-lite", fallbacks: ["anthropic/claude-haiku-4.5"],    reasoning: "low",    skill: "sizing" },
   Promotions:            { model: "openai/gpt-5.4-nano",          fallbacks: ["google/gemini-3.1-flash-lite"],  reasoning: "low",    skill: "promotions" },
-  Refunds_and_exchanges: { model: "openai/gpt-5.4-mini",          fallbacks: ["anthropic/claude-haiku-4.5"],    reasoning: "medium", skill: "returns-and-exchanges" },
+  Refunds_and_exchanges: { model: "anthropic/claude-haiku-5.5",   fallbacks: ["openai/gpt-6-luna"],             reasoning: "medium", skill: "returns-and-exchanges" },
   Technical_support:     { model: "anthropic/claude-sonnet-5",    fallbacks: ["google/gemini-3.8-flash"],       reasoning: "medium", skill: "technical-support" },
   Shipping:              { model: "openai/gpt-5.4-nano",          fallbacks: ["google/gemini-3.1-flash-lite"],  reasoning: "medium", skill: "shipping" },
 };
