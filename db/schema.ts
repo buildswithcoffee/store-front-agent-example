@@ -87,4 +87,20 @@ export const schema = [
   // empty table, so databases seeded before the color existed get it here.
   `update products set options = jsonb_set(options, '{Color}', (options -> 'Color') || '["Burgundy"]'::jsonb)
     where slug = 'trail-shell-jacket' and not (options -> 'Color') @> '["Burgundy"]'::jsonb`,
+
+  // A flagged production batch. Order line items carry their batch, so one row
+  // covers every order with that product and batch. internal_note is for staff;
+  // shopper_message is the only part Scout may tell a shopper.
+  `create table if not exists batch_advisories (
+    id serial primary key,
+    product_slug text not null,
+    batch text not null,
+    issue text not null,
+    remedy text not null,
+    internal_note text not null,
+    shopper_message text not null,
+    created_by text not null,
+    created_at timestamptz not null default now(),
+    unique (product_slug, batch)
+  )`,
 ];
