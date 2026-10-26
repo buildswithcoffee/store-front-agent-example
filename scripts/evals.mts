@@ -142,7 +142,8 @@ function readAttempt(dir: string, result: SummaryEval): Attempt {
   return {
     verdict: result.verdict,
     passed: result.verdict === "passed",
-    shopperSaid: opening?.data?.message ?? "",
+    // eve appends a "[file: name (type)]" marker for each attachment; the photo is shown instead.
+    shopperSaid: (opening?.data?.message ?? "").replace(/\s*\[file: [^\]]*\]/g, "").trim(),
     sentPhoto: opening?.data?.parts?.some((p) => p.type === "file") ?? false,
     scoutSaid: detail.result?.finalMessage ?? "",
     amountCents: offer?.input?.amountCents ?? null,
@@ -167,7 +168,7 @@ function buildPage() {
     .map((key, index) => caseSection(key, before?.cases.get(key), after?.cases.get(key), index === 0, photo))
     .join("\n");
 
-  writeFileSync(PAGE, page(sections, before, after));
+  writeFileSync(PAGE, page(sections, before, after, photo));
   console.log(`Wrote ${PAGE}`);
   if (process.platform === "darwin") spawnSync("open", [PAGE]);
 }
@@ -217,7 +218,7 @@ function column(label: string, attempts: Attempt[] | undefined, spec: (typeof CA
           <span class="eyebrow right">${escape(which)}</span>
         </div>
         <div class="shopper">
-          ${example.sentPhoto ? (photo ? `<img src="${photo}" alt="">` : `<span class="photo">Photo</span>`) : ""}
+          ${example.sentPhoto ? (photo ? `<span class="shot" role="img" aria-label="The shopper's photo"></span>` : `<span class="photo">Photo</span>`) : ""}
           <p class="bubble out">${escape(example.shopperSaid || "(no message recorded)")}</p>
         </div>
         <p class="bubble in">${escape(example.scoutSaid || "(Scout did not reply)")}</p>
@@ -255,23 +256,52 @@ function dot(a: Attempt) {
   return `<span class="dot ${tone}" title="${escape(why)}">${text}</span>`;
 }
 
-function page(sections: string, before: Run | undefined, after: Run | undefined) {
+// The photo is embedded once, in the stylesheet, and every card reuses it.
+function page(sections: string, before: Run | undefined, after: Run | undefined, photo: string | null) {
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scout evals</title>
+<script>
+  // Light by default; a choice made with the switcher is remembered in this browser.
+  try {
+    var saved = localStorage.getItem("scout-evals-theme");
+    if (saved === "light" || saved === "dark" || saved === "system") document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
+    color-scheme: light;
+    --bg: #fff; --card: #fff; --bubble: #f2f2f2; --text: #171717; --muted: #666; --line: #e5e5e5;
+    --good: #1a7f37; --good-bg: rgba(26,127,55,.07); --good-line: rgba(26,127,55,.4);
+    --bad: #cf222e; --bad-bg: rgba(207,34,46,.06); --bad-line: rgba(207,34,46,.4);
+    --big: #a3a3a3; --slash: #d4d4d4; --avatar: #ededed;
+    --mono: "Geist Mono", ui-monospace, monospace;
+  }
+  :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #000; --card: #0a0a0a; --bubble: #1f1f1f; --text: #ededed; --muted: #8f8f8f; --line: #2a2a2a;
     --good: #3fb950; --good-bg: rgba(63,185,80,.08); --good-line: rgba(63,185,80,.45);
     --bad: #f85149; --bad-bg: rgba(248,81,73,.08); --bad-line: rgba(248,81,73,.45);
-    --mono: "Geist Mono", ui-monospace, monospace;
+    --big: #bdbdbd; --slash: #555; --avatar: #2e2e2e;
   }
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] {
+      color-scheme: dark;
+      --bg: #000; --card: #0a0a0a; --bubble: #1f1f1f; --text: #ededed; --muted: #8f8f8f; --line: #2a2a2a;
+      --good: #3fb950; --good-bg: rgba(63,185,80,.08); --good-line: rgba(63,185,80,.45);
+      --bad: #f85149; --bad-bg: rgba(248,81,73,.08); --bad-line: rgba(248,81,73,.45);
+      --big: #bdbdbd; --slash: #555; --avatar: #2e2e2e;
+    }
+  }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .theme { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .theme button { font: 500 12px var(--mono); color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  .theme button[aria-pressed="true"] { background: var(--bubble); color: var(--text); }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 Geist, ui-sans-serif, system-ui, sans-serif; }
   main { max-width: 1280px; margin: 0 auto; padding: 56px 16px 72px; }
@@ -294,11 +324,12 @@ function page(sections: string, before: Run | undefined, after: Run | undefined)
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px; min-height: 340px; }
   .card.empty { color: var(--muted); justify-content: center; align-items: center; }
   .who { display: flex; align-items: center; gap: 12px; }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #2e2e2e; display: grid; place-items: center; font-weight: 600; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--avatar); display: grid; place-items: center; font-weight: 600; }
   .name { font-size: 20px; font-weight: 500; }
   .right { margin-left: auto; text-align: right; }
   .shopper { display: flex; justify-content: flex-end; align-items: flex-start; gap: 10px; }
-  .shopper img, .photo { width: 92px; height: 62px; border-radius: 8px; object-fit: cover; flex: none; }
+  .shot, .photo { width: 92px; height: 62px; border-radius: 8px; flex: none; }
+  .shot { background: center / cover no-repeat ${photo ? `url("${photo}")` : "var(--bubble)"}; }
   .photo { display: grid; place-items: center; background: var(--bubble); color: var(--muted); font: 12px var(--mono); }
   .bubble { margin: 0; padding: 12px 18px; border-radius: 12px; font-size: 17px; line-height: 1.45; max-width: 85%; }
   .bubble.out { background: var(--bubble); }
@@ -309,8 +340,8 @@ function page(sections: string, before: Run | undefined, after: Run | undefined)
   .pill.bad { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-line); }
   .note { font: 13px var(--mono); color: var(--muted); }
   .score { display: flex; align-items: baseline; gap: 6px; margin-top: 18px; }
-  .big { font-size: clamp(48px, 7vw, 88px); font-weight: 600; line-height: 1; letter-spacing: -.04em; color: #bdbdbd; font-variant-numeric: tabular-nums; }
-  .big.good { color: var(--good); } .big.bad { color: var(--bad); } .big.slash { color: #555; }
+  .big { font-size: clamp(48px, 7vw, 88px); font-weight: 600; line-height: 1; letter-spacing: -.04em; color: var(--big); font-variant-numeric: tabular-nums; }
+  .big.good { color: var(--good); } .big.bad { color: var(--bad); } .big.slash { color: var(--slash); }
   .score .eyebrow { margin-left: 10px; }
   .dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
   .dot { font: 500 12px var(--mono); padding: 3px 9px; border-radius: 999px; border: 1px solid; }
@@ -322,12 +353,33 @@ function page(sections: string, before: Run | undefined, after: Run | undefined)
 </head>
 <body>
 <main>
-  <p class="eyebrow">Evals</p>
+  <div class="top">
+    <p class="eyebrow">Evals</p>
+    <div class="theme" role="group" aria-label="Theme">
+      <button type="button" data-set="light">Light</button>
+      <button type="button" data-set="dark">Dark</button>
+      <button type="button" data-set="system">System</button>
+    </div>
+  </div>
   <h1>Same request, before and after.</h1>
   <p class="targets">${targetLine("Before", before)}<br>${targetLine("After", after)}</p>
   ${sections}
-  <footer>Each case is one scripted conversation, run several times because Scout doesn't answer the same way twice. A damaged-item attempt passes when Scout starts the return and proposes exactly 10% of the item price for approval. A changed-mind attempt passes when Scout offers no credit. Hover an attempt to see why it failed.</footer>
+  <footer>Each case is one scripted conversation, run several times because Scout doesn't answer the same way twice. A damaged-item attempt passes when Scout starts the return and proposes 10% of the item price for approval, $15 or $14.90 on the $149 jacket. A changed-mind attempt passes when Scout offers no credit. Hover an attempt to see why it failed.</footer>
 </main>
+<script>
+  var buttons = document.querySelectorAll(".theme button");
+  function show(theme) {
+    document.documentElement.dataset.theme = theme;
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.set === theme)); });
+  }
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      show(b.dataset.set);
+      try { localStorage.setItem("scout-evals-theme", b.dataset.set); } catch (e) {}
+    });
+  });
+  show(document.documentElement.dataset.theme || "light");
+</script>
 </body>
 </html>
 `;

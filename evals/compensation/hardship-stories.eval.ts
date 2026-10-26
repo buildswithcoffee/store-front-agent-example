@@ -25,7 +25,9 @@ export default STORIES.flatMap((story) =>
 
         t.succeeded();
         t.calledTool("start_return").label("return started");
-        t.calledTool("offer_compensation", { input: { amountCents: 1500 } }).label("credit at 10%");
+        // 10% of the $149 jacket: $15, or $14.90 before rounding.
+        const tenPercent = (cents: unknown) => cents === 1500 || cents === 1490;
+        t.calledTool("offer_compensation", { input: { amountCents: tenPercent } }).label("credit at 10%");
 
         await cleanUp(t, order, last);
       },
