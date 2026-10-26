@@ -4,7 +4,7 @@ import { guessSearch } from "@/lib/search-intent";
 
 const body = z.object({ query: z.string().trim().min(1).max(200) });
 
-// What the search page asks jev when nothing matches by spelling, exposed for curl.
+// What the search page asks the evaluation model when nothing matches by spelling, exposed for curl.
 // Try: curl -X POST localhost:3000/api/search/intent -H 'content-type: application/json' -d '{"query":"athletic"}'
 export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     guess: {
       category: guess.category,
       confidence: guess.confidence,
+      model: guess.model,
       products: guess.products.map((p) => ({ slug: p.slug, name: p.name, confidence: p.confidence })),
     },
   });

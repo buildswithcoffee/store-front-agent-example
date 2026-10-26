@@ -18,7 +18,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     return <Results heading={`No exact match for “${query}”. Did you mean ${similar[0].name}?`} products={similar} />;
   }
 
-  // 3. Nothing is spelled like it either. Ask jev what the shopper meant.
+  // 3. Nothing is spelled like it either. Ask the evaluation model what the shopper meant.
   const guess = await guessSearch(query);
   if (!guess) return <Empty>Nothing in the store matches “{query}”.</Empty>;
 
@@ -26,18 +26,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <Results
       heading={`Nothing is called “${query}”. ${
         guess.confidence >= 0.5
-          ? `jev is ${percent(guess.confidence)} sure you are shopping for ${guess.category}.`
-          : `jev's best guess is ${guess.category}, at ${percent(guess.confidence)}.`
+          ? `${shortName(guess.model)} is ${percent(guess.confidence)} sure you are shopping for ${guess.category}.`
+          : `${shortName(guess.model)}'s best guess is ${guess.category}, at ${percent(guess.confidence)}.`
       }`}
       products={guess.products}
     >
-      <Guesses products={guess.products.slice(0, 3)} />
+      <Guesses products={guess.products.slice(0, 3)} model={guess.model} />
     </Results>
   );
 }
 
-// jev's top picks within the department, with its probability for each.
-function Guesses({ products }: { products: RankedProduct[] }) {
+// The model's top picks within the department, with its probability for each.
+function Guesses({ products, model }: { products: RankedProduct[]; model: string }) {
   return (
     <p className="mt-2 flex flex-wrap gap-1 text-xs text-neutral-500">
       <span className="py-0.5">Most likely:</span>
@@ -46,7 +46,7 @@ function Guesses({ products }: { products: RankedProduct[] }) {
           {p.name} · {percent(p.confidence)}
         </Link>
       ))}
-      <span className="rounded-full bg-neutral-100 px-2 py-0.5">typesafe-ai/jev</span>
+      <span className="rounded-full bg-neutral-100 px-2 py-0.5">{model}</span>
     </p>
   );
 }
@@ -77,3 +77,6 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 const percent = (n: number) => `${Math.round(n * 100)}%`;
+
+// "typesafe-ai/jev" reads as "jev" in a sentence; the chip below keeps the full id.
+const shortName = (model: string) => model.split("/").pop() ?? model;

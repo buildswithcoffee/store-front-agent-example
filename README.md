@@ -118,7 +118,7 @@ The status must be one of `processing`, `shipped`, `delivered`, or `cancelled`. 
 
 **Scout**, the assistant, is an Eve agent in `agent/`. For each message:
 
-1. The chat drawer sends the message to `/api/agent/intent`, which uses [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) to classify it into one of seven intents (sizing, shipping, returns, and so on).
+1. The chat drawer sends the message to `/api/agent/intent`, which classifies it into one of seven intents (sizing, shipping, returns, and so on) with the AI SDK's [evaluate](https://ai-sdk.dev/docs/ai-sdk-core/evaluation). The classifier is the `vmc/my-evaluation-models` virtual model on AI Gateway, which tries [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) first and falls back to luna-decisions and the rest of its chain. The slug lives in `lib/evaluation-model.ts`; the fallback order is configured in the Vercel dashboard.
 2. The intent is looked up in the `ROUTES` table in `agent/agent.ts`. Each row sets the model, a fallback model, the reasoning effort, and an optional skill.
 3. Eve runs the turn on that model. The model loads the skill if there is one and answers using the store's tools, which call the same `lib/store.ts` functions the pages use.
 
@@ -149,7 +149,7 @@ agent/
   agent.ts                    Routing table and per-turn model selection
   instructions.md             Scout's system prompt
   channels/eve.ts             Chat endpoint; attaches the cart to the session
-  lib/classify.ts             Intents and the jev classifier
+  lib/classify.ts             Intents and the intent classifier
   tools/                      Catalog, cart, and order tools
   skills/                     Sizing, returns, promotions, shipping, technical support
 
@@ -160,7 +160,8 @@ components/
 lib/
   db.ts                       Neon client; creates tables and seeds on first use
   store.ts                    Products, carts, orders, and search queries
-  search-intent.ts            jev fallback for search
+  search-intent.ts            Evaluation-model fallback for search
+  evaluation-model.ts         The virtual model every evaluate() call uses
   admin-auth.ts               Admin password check and session cookie
   cart-cookie.ts, format.ts
 

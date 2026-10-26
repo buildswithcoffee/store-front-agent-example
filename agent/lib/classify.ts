@@ -1,5 +1,7 @@
 import { experimental_evaluate as evaluate, type ModelMessage } from "ai";
 
+import { answeringModel, EVALUATION_MODEL } from "../../lib/evaluation-model";
+
 export const SHOPPER_INTENTS = {
   Personal_shopping: "Wants help choosing what to buy, including finding things like a photo they shared.",
   Product_details: "Asking about a product's specs, materials, or availability, or whether we sell something shown in a photo.",
@@ -15,18 +17,17 @@ export type ShopperIntent = keyof typeof SHOPPER_INTENTS;
 type RecentMessage = { role: "user" | "assistant"; text: string };
 
 
-// Ask jev which intent a message has. `recent` keeps a follow-up on topic. The classifier
-// only reads text, so `hasPhoto` tells it when a photo came along with the words.
+// Ask the evaluation model which intent a message has. `recent` keeps a follow-up on topic.
+// The classifier only reads text, so `hasPhoto` tells it when a photo came along with the words.
 export async function classifyIntent(
   message: string,
   recent: RecentMessage[] = [],
   abortSignal?: AbortSignal,
   hasPhoto = false,
 ) {
-  const { answers } = await evaluate({
+  const result = await evaluate({
     abortSignal,
-
-    model: "typesafe-ai/jev",
+    model: EVALUATION_MODEL,
     state: {
       recent,
       message,
@@ -43,12 +44,14 @@ export async function classifyIntent(
     },
   });
 
-  const { choice, probabilities } = answers.intent;
+  const { choice, probabilities } = result.answers.intent;
 
-  return { 
+  return {
     intent: choice,
     confidence: probabilities?.[choice],
-    classifier: "typesafe-ai/jev" };
+    // Whichever model in the virtual model's chain answered, so the drawer can show a fallback.
+    classifier: answeringModel(result),
+  };
 }
 
 
