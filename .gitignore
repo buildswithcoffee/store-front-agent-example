@@ -9,3 +9,6 @@ next-env.d.ts
 # eve
 .eve/
 .output/
+
+# eval results saved by scripts/evals.ts
+evals/results/

@@ -6,7 +6,10 @@
     "build": "next build",
     "start": "next start",
     "db:reset": "node --env-file=.env.local db/reset.ts",
-    "db:images": "node db/images.ts"
+    "db:images": "node db/images.ts",
+    "evals:before": "node --env-file-if-exists=.env.evals scripts/evals.mts before",
+    "evals:after": "node --env-file-if-exists=.env.evals scripts/evals.mts after",
+    "evals:report": "node scripts/evals.mts report"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

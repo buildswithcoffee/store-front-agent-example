@@ -175,6 +175,28 @@ data/
   orders.json                 Demo orders
 ```
 
+## Evals
+
+`evals/compensation/` checks Scout's goodwill credits. Each case is a scripted chat plus a rule, and each runs several times, because Scout doesn't answer the same way twice:
+
+| Case | Rule |
+| --- | --- |
+| Jordan's hiking-trip story | Exactly 10% ($15 on the $149 jacket), with approval requested |
+| Five other hardship stories | Same rule |
+| Alex's short message | Same rule |
+| A changed-mind return | No credit at all |
+
+The evals run against a deployment. Compare two of them, such as a preview of `main` and a preview of a pull request, and open the results page:
+
+```bash
+npm run evals:before -- https://<before-deployment>
+npm run evals:after -- https://<after-deployment>
+```
+
+`evals:after` opens `evals/results/report.html` when it finishes. `npm run evals:report` rebuilds it from the saved runs. To skip the addresses, put `EVALS_BEFORE_URL` and `EVALS_AFTER_URL` in `.env.evals`.
+
+Before running, set Jordan's order number and email in `evals/compensation/shoppers.ts` (Jordan's cases are skipped until you do), and put the damaged-jacket photo at `evals/photos/torn-jacket.jpg`. Every attempt files a real return and a pending offer in the deployment's database.
+
 ## Environment variables
 
 | Variable | Set by | Purpose |
