@@ -11,7 +11,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/postcss": "^4.3.3",
-    "ai": "^7.0.0",
+    "ai": "^7.0.152",
     "eve": "^0.65.0",
     "next": "^16.0.0",
     "react": "^19.0.0",

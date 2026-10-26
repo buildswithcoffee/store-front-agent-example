@@ -1,6 +1,6 @@
-import { experimental_evaluate as evaluate, type ModelMessage } from "ai";
+import { experimental_decide as decide, type ModelMessage } from "ai";
 
-import { answeringModel, EVALUATION_MODEL } from "../../lib/evaluation-model";
+import { answeringModel, EVALUATION_MODEL, unlessRefused } from "../../lib/evaluation-model";
 
 export const SHOPPER_INTENTS = {
   Personal_shopping: "Wants help choosing what to buy, including finding things like a photo they shared.",
@@ -19,13 +19,14 @@ type RecentMessage = { role: "user" | "assistant"; text: string };
 
 // Ask the evaluation model which intent a message has. `recent` keeps a follow-up on topic.
 // The classifier only reads text, so `hasPhoto` tells it when a photo came along with the words.
+// Returns null when the model refuses to pick an intent.
 export async function classifyIntent(
   message: string,
   recent: RecentMessage[] = [],
   abortSignal?: AbortSignal,
   hasPhoto = false,
 ) {
-  const result = await evaluate({
+  const result = await unlessRefused(decide({
     abortSignal,
     model: EVALUATION_MODEL,
     state: {
@@ -42,7 +43,8 @@ export async function classifyIntent(
         criteria: SHOPPER_INTENTS,
       },
     },
-  });
+  }));
+  if (!result) return null;
 
   const { choice, probabilities } = result.answers.intent;
 
