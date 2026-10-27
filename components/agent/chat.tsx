@@ -22,6 +22,8 @@ interface TurnInfo {
   classifier?: string;
   intent?: string;
   confidence?: number;
+  // The skill the intent routes to, known before the agent loads it.
+  skill?: string | null;
   note?: string;
   modelId?: string;
   // The photo sent with this turn. Eve does not echo attachment bytes back, so the
@@ -132,6 +134,14 @@ export function Chat() {
     );
   }
 
+  // Narrate a turn only when its intent is new: the first turn, or a change of topic.
+  let lastIntent: string | undefined;
+  const narrate = turns.map((t) => {
+    const isNew = !!t.intent && t.intent !== lastIntent;
+    if (t.intent) lastIntent = t.intent;
+    return isNew;
+  });
+
   // An assistant message shares the turn info of the user message that triggered it.
   let turnIndex = -1;
   return (
@@ -159,7 +169,7 @@ export function Chat() {
         )}
         {agent.data.messages.map((message) => {
           if (message.role === "user") turnIndex++;
-          return <Message key={message.id} message={message} info={turns[turnIndex]} />;
+          return <Message key={message.id} message={message} info={turns[turnIndex]} narrate={narrate[turnIndex] ?? false} />;
         })}
         {agent.error && <p className="text-xs text-red-600">{agent.error.message}</p>}
         <div ref={bottom} />
@@ -242,14 +252,14 @@ async function classify(message: string, recent: RecentMessage[], hasPhoto: bool
     });
     if (!response.ok) return {};
     const data = (await response.json()) as TurnInfo;
-    return { classifier: data.classifier, intent: data.intent, confidence: data.confidence, note: data.note };
+    return { classifier: data.classifier, intent: data.intent, confidence: data.confidence, skill: data.skill, note: data.note };
   } catch {
     return {};
   }
 }
 
-function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
-  if (message.role !== "user") return <AssistantMessage message={message} info={info} />;
+function Message({ message, info, narrate }: { message: EveMessage; info?: TurnInfo; narrate: boolean }) {
+  if (message.role !== "user") return <AssistantMessage message={message} info={info} narrate={narrate} />;
   return (
     <div className="flex flex-col items-end gap-1">
       {message.parts.map((part, index) => {
@@ -271,7 +281,7 @@ function Message({ message, info }: { message: EveMessage; info?: TurnInfo }) {
   );
 }
 
-function AssistantMessage({ message, info }: { message: EveMessage; info?: TurnInfo }) {
+function AssistantMessage({ message, info, narrate }: { message: EveMessage; info?: TurnInfo; narrate: boolean }) {
   // Several tools in one reply can return the same product; show each card once.
   // Computed up front so rendering stays free of side effects.
   const shown = new Set<string>();
@@ -286,7 +296,7 @@ function AssistantMessage({ message, info }: { message: EveMessage; info?: TurnI
   }
   return (
     <div className="space-y-2">
-      {info?.intent && <Narration intent={info.intent} skill={skill} />}
+      {narrate && info?.intent && <Narration intent={info.intent} skill={skill || info.skill || ""} />}
       <RouteRow skill={skill} modelId={info?.modelId} />
       {message.parts.map((part, index) => {
         if (part.type === "text")
@@ -333,8 +343,9 @@ function RouteRow({ skill, modelId }: { skill: string; modelId?: string }) {
   );
 }
 
-// Names the skill when one loaded, so this line cannot contradict the row above it
-// on the turns where the model picks a skill the intent did not route to.
+// Names the skill the intent routes to, so the sentence is settled before the agent loads
+// anything and types once. A loaded skill wins, so the line cannot contradict the row
+// below it on the turns where the model picks a skill the intent did not route to.
 function Narration({ intent, skill }: { intent: string; skill: string }) {
   const topic = skill ? skill.replaceAll("-", " ") : intent.replaceAll("_", " ").toLowerCase();
   const text = `It looks like you're looking for ${topic.endsWith("support") ? topic : `${topic} support`}.${
@@ -347,14 +358,22 @@ function Narration({ intent, skill }: { intent: string; skill: string }) {
   );
 }
 
-// Keyed on the text so streaming re-renders do not restart the animation.
+// Keyed on the text so streaming re-renders do not restart the animation. When the text
+// only grows (the skill sentence arrives after the intent sentence), typing picks up where
+// it left off instead of clearing and retyping the part already shown.
 function Typewriter({ text }: { text: string }) {
   const [shown, setShown] = useState(0);
+  const typed = useRef({ text: "", n: 0 });
   useEffect(() => {
-    setShown(0);
-    let n = 0;
+    const prev = typed.current;
+    let n = text.startsWith(prev.text.slice(0, prev.n)) ? prev.n : 0;
+    const progress = { text, n };
+    typed.current = progress;
+    setShown(n);
+    if (n >= text.length) return;
     const id = setInterval(() => {
       n += 1;
+      progress.n = n;
       setShown(n);
       if (n >= text.length) clearInterval(id);
     }, 18);
