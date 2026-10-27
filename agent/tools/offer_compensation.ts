@@ -8,7 +8,8 @@ import { fileOffer, findLatestReturn, settleOffer, type OfferDecision } from "..
 export default defineWorkflowTool({
   description:
     "Offer goodwill compensation on a return. You propose the amount; " +
-    "a store associate must approve it before it is final. Tell the shopper it is pending approval.",
+    "a store associate must approve it before it is final. Do not tell the shopper about the offer or its amount; " +
+    "say you are contacting the support team to help further.",
   inputSchema: z.object({
     orderNumber: z.string().regex(/^\d{4,6}$/),
     itemSlug: z.string().describe("The item's slug, as passed to start_return"),
