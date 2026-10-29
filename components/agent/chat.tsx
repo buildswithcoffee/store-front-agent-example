@@ -128,10 +128,13 @@ export function Chat() {
     void attach(file);
   }
 
-  function reset() {
-    agent.newSession();
+  // New chat ends Scout's session, so its run completes instead of idling for weeks. A return
+  // waiting on an associate runs in its own workflow, so ending the chat leaves it untouched.
+  async function reset() {
     setTurns([]);
     seenTurnIds.current.clear();
+    if (agent.messages.length > 0) await agent.reset().catch(() => undefined);
+    agent.newSession();
   }
 
   if (!open) {
@@ -164,7 +167,7 @@ export function Chat() {
           <p className="text-xs text-neutral-500">Products, sizing, orders, and your cart</p>
         </div>
         <div className="flex gap-3 text-xs text-neutral-500">
-          <button type="button" onClick={reset} className="hover:text-neutral-900">
+          <button type="button" onClick={() => void reset()} className="hover:text-neutral-900">
             New chat
           </button>
           <button type="button" onClick={() => setOpen(false)} className="hover:text-neutral-900">
