@@ -1,11 +1,12 @@
 import { getOrCreateCartId } from "@/lib/cart-cookie";
+import { cartToken } from "@/lib/scout";
 
-// Called by the chat panel before its first message so the cart cookie exists.
-// The agent's channel reads that cookie and binds the session to the cart.
+// The chat panel calls this for the token it sends to Scout. Making sure the cart cookie
+// exists first means the chat and the cart page share one cart.
 export async function POST(request: Request) {
   if (request.headers.get("origin") !== new URL(request.url).origin) {
     return new Response(null, { status: 403 });
   }
-  await getOrCreateCartId();
-  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  const cartId = await getOrCreateCartId();
+  return Response.json(cartToken(cartId), { headers: { "Cache-Control": "no-store" } });
 }
