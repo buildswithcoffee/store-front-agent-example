@@ -1,7 +1,7 @@
-import { withEve } from "eve/next";
 import type { NextConfig } from "next";
 
+// Scout, the shopping assistant, runs as its own Vercel project (buildswithcoffee/scout-agent).
+// The chat panel talks to it at NEXT_PUBLIC_SCOUT_URL; see lib/scout-url.ts.
 const nextConfig: NextConfig = {};
 
-// Runs the agent in agent/ beside the app and mounts it at /eve/v1/*.
-export default withEve(nextConfig);
+export default nextConfig;

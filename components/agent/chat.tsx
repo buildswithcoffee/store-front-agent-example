@@ -1,12 +1,13 @@
 "use client";
 
-import type { EveDynamicToolPart, EveMessage } from "eve/react";
+import type { EveMessage, EveToolPart } from "eve/react";
 import { useEveAgent } from "eve/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { formatPrice } from "@/lib/format";
+import { SCOUT_URL, type CartToken } from "@/lib/scout-url";
 
 interface ProductCardData {
   slug: string;
@@ -45,16 +46,26 @@ export function Chat() {
   const [photo, setPhoto] = useState<Attachment | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const cartReady = useRef<Promise<unknown> | null>(null);
+  const scoutToken = useRef<Promise<CartToken> | null>(null);
   const pendingIntent = useRef<TurnInfo | null>(null);
   const seenTurnIds = useRef(new Set<string>());
 
+  // Scout runs on its own domain. Every request carries a token the storefront signed for this
+  // shopper's cart, fetched once and again a minute before it expires.
+  async function bearer() {
+    const current = await scoutToken.current?.catch(() => null);
+    if (current && current.expiresAt - 60 > Date.now() / 1000) return current.token;
+    scoutToken.current = fetch("/api/agent/session", { method: "POST" }).then((r) => {
+      if (!r.ok) throw new Error("Could not start a chat.");
+      return r.json() as Promise<CartToken>;
+    });
+    return (await scoutToken.current).token;
+  }
+
   const agent = useEveAgent({
+    baseUrl: SCOUT_URL,
+    auth: { bearer },
     async prepareSend(turn) {
-      // Make sure the browser has a cart cookie before the first message, so the
-      // agent's channel can bind the session to that cart.
-      cartReady.current ??= fetch("/api/agent/session", { method: "POST" });
-      await cartReady.current;
       const detected = pendingIntent.current;
       pendingIntent.current = null;
       // The routing note travels with the message as turn context. Eve delivers it to the
@@ -62,23 +73,24 @@ export function Chat() {
       return { ...turn, clientContext: detected?.note };
     },
     onEvent(event) {
-      // The first model step of each turn reports which model the router picked.
-      if (event.type === "step.started" && !seenTurnIds.current.has(event.data.turnId)) {
-        seenTurnIds.current.add(event.data.turnId);
-        const modelId = event.data.modelId;
-        setTurns((all) => all.map((t, i) => (i === all.length - 1 ? { ...t, modelId } : t)));
-      }
+      // The first model call of each turn reports which model the router picked.
+      if (event.type !== "model.started") return;
+      const turnId = event.scope?.turnId;
+      if (!turnId || seenTurnIds.current.has(turnId)) return;
+      seenTurnIds.current.add(turnId);
+      const modelId = event.data.modelId;
+      setTurns((all) => all.map((t, i) => (i === all.length - 1 ? { ...t, modelId } : t)));
     },
     // The agent may have changed the cart; refresh server components so the
     // header count and cart page reflect it.
     onFinish: () => router.refresh(),
   });
 
-  const busy = agent.status === "submitted" || agent.status === "streaming";
+  const busy = agent.status !== "idle";
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [agent.data.messages]);
+  }, [agent.messages]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -89,7 +101,7 @@ export function Chat() {
     setPhoto(null);
     // Classify first (bounded), so the badge and the routing use the same answer.
     // Recent messages let a short follow-up keep the topic of the conversation.
-    const detected = await classify(text, recentFrom(agent.data.messages), attached !== null);
+    const detected = await classify(text, recentFrom(agent.messages), attached !== null);
     pendingIntent.current = detected;
     setTurns((all) => [...all, { ...detected, imageUrl: attached?.dataUrl }]);
     if (!attached) {
@@ -117,7 +129,7 @@ export function Chat() {
   }
 
   function reset() {
-    agent.reset();
+    agent.newSession();
     setTurns([]);
     seenTurnIds.current.clear();
   }
@@ -162,12 +174,12 @@ export function Chat() {
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        {agent.data.messages.length === 0 && (
+        {agent.messages.length === 0 && (
           <p className="text-sm text-neutral-500">
             Try “a jacket under $150”, “does the fleece run small?”, or “add the wool beanie to my cart”.
           </p>
         )}
-        {agent.data.messages.map((message) => {
+        {agent.messages.map((message) => {
           if (message.role === "user") turnIndex++;
           return <Message key={message.id} message={message} info={turns[turnIndex]} narrate={narrate[turnIndex] ?? false} />;
         })}
@@ -288,11 +300,11 @@ function AssistantMessage({ message, info, narrate }: { message: EveMessage; inf
   const cardsByCall = new Map<string, ProductCardData[]>();
   let skill = "";
   for (const part of message.parts) {
-    if (part.type !== "dynamic-tool") continue;
-    if (isSkillPart(part) && part.state !== "output-error") skill ||= skillName(part.input);
+    if (part.type !== "tool") continue;
+    if (part.kind === "skill" && part.state !== "failed") skill ||= part.name;
     const fresh = productsFrom(part).filter((p) => !shown.has(p.slug));
     fresh.forEach((p) => shown.add(p.slug));
-    cardsByCall.set(part.toolCallId, fresh);
+    cardsByCall.set(part.callId, fresh);
   }
   return (
     <div className="space-y-2">
@@ -306,8 +318,8 @@ function AssistantMessage({ message, info, narrate }: { message: EveMessage; inf
             </p>
           ) : null;
         // Skill loads are reported once in RouteRow above.
-        if (part.type === "dynamic-tool" && !isSkillPart(part))
-          return <ToolPart key={part.toolCallId} part={part} products={cardsByCall.get(part.toolCallId) ?? []} />;
+        if (part.type === "tool" && part.kind === "tool")
+          return <ToolPart key={part.callId} part={part} products={cardsByCall.get(part.callId) ?? []} />;
         return null;
       })}
     </div>
@@ -382,7 +394,7 @@ function Typewriter({ text }: { text: string }) {
   return <>{text.slice(0, shown)}</>;
 }
 
-function ToolPart({ part, products }: { part: EveDynamicToolPart; products: ProductCardData[] }) {
+function ToolPart({ part, products }: { part: EveToolPart; products: ProductCardData[] }) {
   if (products.length > 0) {
     return (
       <div className="grid grid-cols-2 gap-2">
@@ -400,31 +412,19 @@ function ToolPart({ part, products }: { part: EveDynamicToolPart; products: Prod
   }
   // A product tool whose results were all shown already needs no status line.
   if (productsFrom(part).length > 0) return null;
-  const name = part.toolName.replaceAll("_", " ");
+  const name = part.name.replaceAll("_", " ");
   return (
     <p className="text-xs text-neutral-400">
       Using skill: {name.charAt(0).toUpperCase() + name.slice(1)}
-      {part.state === "output-error" && " (failed)"}
+      {part.state === "failed" && " (failed)"}
     </p>
   );
 }
 
-function isSkillPart(part: EveDynamicToolPart): boolean {
-  return part.toolName === "load_skill" || part.toolMetadata?.eve?.kind === "load-skill";
-}
-
-function productsFrom(part: EveDynamicToolPart): ProductCardData[] {
-  if (part.state !== "output-available" || !part.output || typeof part.output !== "object") return [];
+function productsFrom(part: EveToolPart): ProductCardData[] {
+  if (part.state !== "completed" || !part.output || typeof part.output !== "object") return [];
   const output = part.output as { products?: ProductCardData[]; product?: ProductCardData };
   return output.products ?? (output.product ? [output.product] : []);
-}
-
-function skillName(input: unknown): string {
-  if (input && typeof input === "object") {
-    const value = Object.values(input as Record<string, unknown>)[0];
-    if (typeof value === "string") return value;
-  }
-  return "";
 }
 
 // Shrink the photo before it leaves the browser. Phone photos run to several megabytes

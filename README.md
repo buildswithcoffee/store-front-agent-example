@@ -1,6 +1,6 @@
 # Northstar Goods - Example Storefront with Jev-powered Search and Agent via Vercel AI Gateway
 
-A demo storefront with Scout, an AI shopping assistant. It is a Next.js app backed by a Neon Postgres database, with an [Eve](https://eve.dev) agent that picks a model for each message based on what the shopper is asking.
+A demo storefront with Scout, an AI shopping assistant. It is a Next.js app backed by a Neon Postgres database. Scout is an [Eve](https://eve.dev) agent that picks a model for each message based on what the shopper is asking. It runs as its own Vercel project, from [buildswithcoffee/scout-agent](https://github.com/buildswithcoffee/scout-agent), and the chat drawer here talks to it.
 
 ## Getting started
 
@@ -67,9 +67,20 @@ You need Node 24 and the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g ve
    vercel deploy --prod
    ```
 
+### Connect Scout
+
+The store works on its own, but the "Ask Scout" drawer needs a Scout deployment. Deploy [scout-agent](https://github.com/buildswithcoffee/scout-agent) to its own Vercel project, connect it to the same Neon database, then give both projects the same random `SCOUT_STOREFRONT_SECRET`:
+
+```bash
+openssl rand -hex 32   # use the output as the value in both projects
+vercel env add SCOUT_STOREFRONT_SECRET
+```
+
+If Scout isn't at `https://scout-agent.verceldemo.com`, set `NEXT_PUBLIC_SCOUT_URL` to its address. Locally, run Scout with `eve dev` and put `NEXT_PUBLIC_SCOUT_URL=http://127.0.0.1:2000` in `.env.local`.
+
 ### Notes
 
-- The OIDC token in `.env.local` expires after about 12 hours. If the assistant stops responding locally, run `vercel env pull` again.
+- The OIDC token in `.env.local` expires after about 12 hours. If search stops falling back locally, run `vercel env pull` again.
 - If your Vercel CLI defaults to a different team than the project's, add `--scope <team>` to the `vercel` commands.
 
 ## Things to try
@@ -116,15 +127,15 @@ The status must be one of `processing`, `shipped`, `delivered`, or `cancelled`. 
 
 **The store** is a regular Next.js app: a product grid, product pages, a cookie-based cart, and a demo checkout that creates an order without taking payment. All data access goes through `lib/store.ts`. The database is only reachable from the server.
 
-**Scout**, the assistant, is an Eve agent in `agent/`. For each message:
+**Scout**, the assistant, is an Eve agent in its own repo, [scout-agent](https://github.com/buildswithcoffee/scout-agent), and its own Vercel project. For each message:
 
-1. The chat drawer sends the message to `/api/agent/intent`, which classifies it into one of seven intents (sizing, shipping, returns, and so on) with the AI SDK's [decide](https://ai-sdk.dev/docs/ai-sdk-core/decisions). The classifier is the `vmc/my-evaluation-models` virtual model on AI Gateway, which tries [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) first and falls back to luna-decisions and the rest of its chain. The slug lives in `lib/evaluation-model.ts`; the fallback order is configured in the Vercel dashboard. If the model refuses to answer, which luna-decisions does when nothing is a confident fit, the turn runs on the default route and search shows its "nothing matches" message.
-2. The intent is looked up in the `ROUTES` table in `agent/agent.ts`. Each row sets the model, a fallback model, the reasoning effort, and an optional skill.
-3. Eve runs the turn on that model. The model loads the skill if there is one and answers using the store's tools, which call the same `lib/store.ts` functions the pages use.
+1. The chat drawer sends the message to `/api/agent/intent`, which asks Scout to classify it into one of seven intents (sizing, shipping, returns, and so on). Scout uses the AI SDK's [decide](https://ai-sdk.dev/docs/ai-sdk-core/decisions) with the `vmc/my-evaluation-models` virtual model on AI Gateway, which tries [jev](https://ai-sdk.dev/docs/ai-sdk-core/evaluation) first and falls back to luna-decisions and the rest of its chain.
+2. Scout looks the intent up in its routing table. Each row sets the model, a fallback model, the reasoning effort, and an optional skill. The drawer shows the intent, and Scout runs the turn on that row's model.
+3. The model loads the skill if there is one and answers using Scout's tools, which read the same Neon database as the store.
 
-To change which model handles what, edit `ROUTES` in `agent/agent.ts`. The intents are defined in `agent/lib/classify.ts`. Skills are short markdown files in `agent/skills/`.
+The drawer talks to Scout directly with a token that `/api/agent/session` signs for the shopper's cart. Scout takes the cart only from that token, never from the model, so the assistant can only see and change the current shopper's cart, and it refuses any request the store didn't sign.
 
-The cart ID comes from the browser cookie, not from the model, so the assistant can only see and change the current shopper's cart.
+Search uses the same virtual model for its fallback, from `lib/search-intent.ts` and `lib/evaluation-model.ts` here.
 
 ## Project layout
 
@@ -140,18 +151,10 @@ app/
   admin/actions.ts            Server actions for admin sign-in and status changes
   setup/page.tsx              Shown when DATABASE_URL is missing
   actions.ts                  Server actions for the cart and checkout
-  api/agent/intent/route.ts   Classifies a message and returns the route
-  api/agent/session/route.ts  Makes sure the cart cookie exists before chatting
+  api/agent/intent/route.ts   Asks Scout which intent a message has
+  api/agent/session/route.ts  Signs the shopper's cart token for Scout
   api/search/intent/route.ts  The search fallback as JSON
   api/orders/[number]/status/route.ts  Supplier API for order status
-
-agent/
-  agent.ts                    Routing table and per-turn model selection
-  instructions.md             Scout's system prompt
-  channels/eve.ts             Chat endpoint; attaches the cart to the session
-  lib/classify.ts             Intents and the intent classifier
-  tools/                      Catalog, cart, and order tools
-  skills/                     Sizing, returns, promotions, shipping, technical support
 
 components/
   agent/chat.tsx              Chat drawer
@@ -163,6 +166,7 @@ lib/
   search-intent.ts            Evaluation-model fallback for search
   evaluation-model.ts         The virtual model every decide() call uses, and refusal handling
   admin-auth.ts               Admin password check and session cookie
+  scout.ts, scout-url.ts      Where Scout runs, and the cart token it trusts
   cart-cookie.ts, format.ts
 
 db/
@@ -177,30 +181,15 @@ data/
 
 ## Evals
 
-`evals/compensation/` checks Scout's goodwill credits. Each case is a scripted chat plus a rule, and each runs several times, because Scout doesn't answer the same way twice:
-
-| Case | Rule |
-| --- | --- |
-| Jordan's hiking-trip story | $15 to $25 on the $149 jacket (10% to about 15%), with approval requested |
-| Five other hardship stories | Same rule |
-| Alex's short message | Exactly 10% ($15), since there's no hardship story |
-| A changed-mind return | No credit at all |
-
-The evals run against a deployment. Compare two of them, such as a preview of `main` and a preview of a pull request, and open the results page:
-
-```bash
-npm run evals:compare -- https://<before-deployment> https://<after-deployment>
-```
-
-That runs both, one after the other, about five minutes in all. To run one side at a time, use `npm run evals:before -- <url>` or `npm run evals:after -- <url>`. `evals:compare` and `evals:after` open `evals/results/report.html` when it finishes. `npm run evals:report` rebuilds it from the saved runs. To skip the addresses, put `EVALS_BEFORE_URL` and `EVALS_AFTER_URL` in `.env.evals`.
-
-Each attempt creates its own delivered jacket order for an `evals.example.com` address, chats with Scout about it, then declines any credit Scout proposed and deletes the order and its returns. The orders go into the database in `.env.local`, so that must be the same database the deployments under test use. The photo the shoppers send is `evals/photos/torn-jacket.jpg`.
+Scout's evals, which check its goodwill credits, live with Scout in [scout-agent](https://github.com/buildswithcoffee/scout-agent).
 
 ## Environment variables
 
 | Variable | Set by | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | Neon integration | Postgres connection string |
+| `SCOUT_STOREFRONT_SECRET` | You | Signs the cart token Scout trusts; the same value goes on Scout's project |
+| `NEXT_PUBLIC_SCOUT_URL` | You (optional) | Scout's address, if not `https://scout-agent.verceldemo.com` |
 | `VERCEL_OIDC_TOKEN` | Vercel | Authenticates to AI Gateway |
 | `AI_GATEWAY_API_KEY` | You (optional) | Use an API key instead of OIDC |
 | `ADMIN_PASSWORD` | You (optional) | Turns on the store admin at `/admin` |
