@@ -159,6 +159,7 @@ export function Chat() {
 
   // An assistant message shares the turn info of the user message that triggered it.
   let turnIndex = -1;
+  let afterUpdate = false;
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 flex h-[75vh] flex-col rounded-t-2xl bg-white shadow-2xl ring-1 ring-neutral-200 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:h-[600px] sm:w-[400px] sm:rounded-2xl">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
@@ -183,7 +184,17 @@ export function Chat() {
           </p>
         )}
         {agent.messages.map((message) => {
-          if (message.role === "user") turnIndex++;
+          // Scout's support-team updates arrive as messages in the session; only Scout's reply
+          // shows, without the chips of the shopper's last turn.
+          if (isSupportUpdate(message)) {
+            afterUpdate = true;
+            return null;
+          }
+          if (message.role === "user") {
+            turnIndex++;
+            afterUpdate = false;
+          }
+          if (afterUpdate) return <Message key={message.id} message={message} narrate={false} />;
           return <Message key={message.id} message={message} info={turns[turnIndex]} narrate={narrate[turnIndex] ?? false} />;
         })}
         {agent.error && <p className="text-xs text-red-600">{agent.error.message}</p>}
@@ -243,10 +254,19 @@ export function Chat() {
 
 type RecentMessage = { role: "user" | "assistant"; text: string };
 
+// When a support lead decides on a return, Scout receives the decision in this session as a
+// message marked "[Support team update]" and tells the shopper. The marker message isn't theirs,
+// so the drawer leaves it out.
+const SUPPORT_UPDATE_PREFIX = "[Support team update]";
+
+function isSupportUpdate(message: EveMessage): boolean {
+  return message.role === "user" && message.parts.some((p) => p.type === "text" && p.text.startsWith(SUPPORT_UPDATE_PREFIX));
+}
+
 // The last few exchanges as plain text, for the classifier.
 function recentFrom(messages: readonly EveMessage[], limit = 4): RecentMessage[] {
   return messages
-    .filter((m) => m.role === "user" || m.role === "assistant")
+    .filter((m) => (m.role === "user" || m.role === "assistant") && !isSupportUpdate(m))
     .map((m) => ({
       role: m.role as RecentMessage["role"],
       text: m.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").trim(),
