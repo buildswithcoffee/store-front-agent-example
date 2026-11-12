@@ -9,7 +9,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto max-w-sm py-8">
-      <p className="text-sm text-neutral-500">Northstar Goods</p>
+      <p className="text-sm text-neutral-500">Northern Goods</p>
       <h1 className="mt-1 text-2xl font-semibold">Store admin</h1>
       {adminConfigured() ? (
         <form action={signIn} className="mt-6 space-y-3">
