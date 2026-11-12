@@ -1,4 +1,4 @@
-# Northstar Goods - Example Storefront with Jev-powered Search and Agent via Vercel AI Gateway
+# Northern Goods - Example Storefront with Jev-powered Search and Agent via Vercel AI Gateway
 
 A demo storefront with Scout, an AI shopping assistant. It is a Next.js app backed by a Neon Postgres database. Scout is an [Eve](https://eve.dev) agent that picks a model for each message based on what the shopper is asking. It runs as its own Vercel project, from [buildswithcoffee/scout-agent](https://github.com/buildswithcoffee/scout-agent), and the chat drawer here talks to it.
 

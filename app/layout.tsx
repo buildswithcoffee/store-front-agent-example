@@ -10,7 +10,7 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 export const metadata: Metadata = {
-  title: "Northstar Goods",
+  title: "Northern Goods",
   description: "A small storefront with Scout, an AI shopping assistant, built to try out Vercel.",
 };
 
