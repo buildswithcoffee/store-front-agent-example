@@ -27,6 +27,8 @@ const LAYERS = [
   { role: "Shell", slug: "trail-shell-jacket" },
 ];
 const HOME_GOODS = ["stovetop-kettle", "enamel-mug-set", "camp-blanket", "cedar-candle"];
+// The holiday gift guide's picks, all under $50.
+const GIFTS = ["wool-beanie", "wool-scarf", "insulated-bottle-750", "canvas-wallet"];
 
 const SCOUT_PROMPTS = ["Warm layers for a fall hike", "Does the fleece run small?", "A gift under $50", "Where's my order?"];
 
@@ -34,13 +36,30 @@ export default async function HomePage(props: { searchParams: Promise<{ category
   const [brandHome, scout] = await evaluate([brandHomeFlag, scoutEnabledFlag]);
   if (!brandHome) return <ShopPage {...props} />;
 
-  const slugs = [...CATEGORY_TILES.map((t) => t.slug), ...FAVORITES, ...LAYERS.map((l) => l.slug), ...HOME_GOODS];
+  const slugs = [...CATEGORY_TILES.map((t) => t.slug), ...FAVORITES, ...LAYERS.map((l) => l.slug), ...HOME_GOODS, ...GIFTS];
   const products = new Map((await getProductsBySlugs([...new Set(slugs)])).map((p) => [p.slug, p]));
   const pick = (list: string[]) => list.flatMap((slug) => products.get(slug) ?? []);
 
   return (
     <div data-full-bleed>
       <Hero scout={scout} />
+
+      {/* The holiday gift guide, first under the hero and framed so it stands out. */}
+      <section className="mx-auto max-w-6xl px-4 pt-12 sm:pt-16">
+        <div className="rounded-3xl border-2 border-clay bg-white p-6 shadow-md ring-8 ring-clay/10 sm:p-10">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="inline-block rounded-full bg-clay px-3 py-1 text-xs font-medium tracking-[0.2em] text-sand uppercase">Holiday gift guide</p>
+              <h2 className="mt-3 font-display text-3xl tracking-tight text-forest sm:text-4xl">Thoughtful gifts under $50.</h2>
+              <p className="mt-2 text-sm text-pine">Order by December 18 for delivery before the holidays.</p>
+            </div>
+            <Link href="/shop?category=Accessories" className="text-sm font-medium text-forest underline underline-offset-4 hover:no-underline">
+              Shop accessories →
+            </Link>
+          </div>
+          <ProductRow products={pick(GIFTS)} />
+        </div>
+      </section>
 
       <Section eyebrow="Shop by category" title="Everything for out there, and back home.">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
